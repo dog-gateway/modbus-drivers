@@ -58,7 +58,8 @@ import org.osgi.service.log.LogService;
  * The network driver for devices based on the Modbus TCP protocol
  * 
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>, Politecnico
- *         di Torino
+ *         di Torino<br/>
+ *         <a href="claudiodegio@gmail.com">Claudio Degioanni</a>
  * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  * 
  * @since Jan 18, 2012
@@ -100,7 +101,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 	private Timer connectionTrialsTimer;
 	
 	// the modbus poller
-	private ModbusPoller poller;
+	private Map<InetAddress, ModbusPoller> pollerPool;
 	
 	// the modbus connection pool
 	private Map<InetAddress, MasterConnection> connectionPool;
@@ -139,11 +140,12 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		// create the connection pool (one per gateway address)
 		this.connectionPool = new ConcurrentHashMap<InetAddress, MasterConnection>();
 		
-		// register this bundle as a service that must be configured.
-		// this.registerManagedService();
+		// empty wait for a call to the activate method (concurrent set
+		// implementation)
+		this.pollerPool = new ConcurrentHashMap<InetAddress, ModbusPoller>();
 		
-		//log the activation
-		this.logger.log(LogService.LOG_DEBUG, ModbusDriverImpl.logId+"Activated...");
+		// log the activation
+		this.logger.log(LogService.LOG_DEBUG, ModbusDriverImpl.logId + "Activated...");
 	}
 	
 	/**
@@ -166,15 +168,18 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		
 		// delete the gateway address to register map
 		this.gatewayAddress2Registers = null;
-				
-		//close connections
+		
+		// delete the poller pool (unRegister already stops poller threads)
+		this.pollerPool = null;
+		
+		// close connections
 		Collection<MasterConnection> connections = this.connectionPool.values();
 		
-		if(connections!=null)
+		if (connections != null)
 		{
-			for(MasterConnection connection: connections)
+			for (MasterConnection connection : connections)
 			{
-				if(connection.isConnected())
+				if (connection.isConnected())
 					connection.close();
 			}
 		}
@@ -182,21 +187,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		// delete the connection pool (one per gateway address)
 		this.connectionPool = null;
 	}
-	
-	/**
-	 * Register this class as a Managed Service
-	 */
-	/*
-	 * private void registerManagedService() { Hashtable<String, Object>
-	 * propManagedService = new Hashtable<String, Object>();
-	 * propManagedService.put(Constants.SERVICE_PID,
-	 * this.bundleContext.getBundle().getSymbolicName());
-	 * this.bundleContext.registerService(ManagedService.class.getName(), this,
-	 * propManagedService);
-	 * 
-	 * }
-	 */
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -246,17 +237,6 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 				this.nConnectionTrials = Integer.valueOf(numTryAsString);
 			}
 			
-			// in any case, as the polling time has a default, init the poller
-			// thread and start it
-			this.poller = new ModbusPoller(this);
-			
-			// start the poller
-			poller.start();
-			
-			// log the driver start
-			this.logger.log(LogService.LOG_INFO, ModbusDriverImpl.logId
-					+ "Started the driver poller thread, ready to handle register sampling at:"+this.pollingTimeMillis+", reading and setting...");
-			
 			// register the service
 			// register the driver service if not already registered
 			if (this.regServiceModbusDriverImpl == null)
@@ -271,10 +251,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 	 */
 	public void unRegister()
 	{
-		// stop the poller
-		if (this.poller != null)
+		// stop all the poller threads
+		for (ModbusPoller poller : this.pollerPool.values())
 		{
-			this.poller.setRunnable(false);
+			poller.setRunnable(false);
 		}
 		
 		// unregister
@@ -368,6 +348,14 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		return gatewayAddress2Registers;
 	}
 	
+	/**
+	 * @return the connectionPool
+	 */
+	public Map<InetAddress, MasterConnection> getConnectionPool()
+	{
+		return connectionPool;
+	}
+	
 	/***************************************************************************************
 	 * 
 	 * Modbus Network Implementation
@@ -382,7 +370,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 	 * ModbusRegisterInfo)
 	 */
 	@Override
-	public void read(ModbusRegisterInfo register)
+	public synchronized void read(ModbusRegisterInfo register)
 	{
 		// prepare the TCP connection to the gateway offering access to the
 		// given register
@@ -691,7 +679,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 	 * @see it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork
 	 * #addDriver(it.polito.elite.dog.drivers.modbus.network.info.
 	 * ModbusRegisterInfo,
-	 * it.polito.elite.dog.drivers.modbus.network.ModbusDriver)
+	 * it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance)
 	 */
 	@Override
 	public void addDriver(ModbusRegisterInfo register, ModbusDriverInstance driver)
@@ -741,7 +729,25 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		// handle the modbus connection
 		if (!this.connectionPool.containsKey(gwAddress))
 		{
+			// open the modbus connection
 			this.openConnection(gwAddress, gwPort, gwProtocolVariant);
+			
+			// check if a poller is already available or not
+			ModbusPoller poller = this.pollerPool.get(gwAddress);
+			
+			// if no poller is currently handling the gateway, then create a new one
+			if (poller == null)
+			{
+				//create a new poller
+				poller = new ModbusPoller(this, gwAddress);
+				
+				// add the thread to the poller pool
+				this.pollerPool.put(gwAddress,poller);
+				
+				// start polling
+				poller.start();
+			}
+			
 		}
 		
 		// add the register entry
@@ -928,14 +934,14 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 	 * @param gwAddress
 	 * @return
 	 */
-	private void closeAndReOpen(final InetAddress gwAddress, final int gwPort, final ModbusProtocolVariant gwProtocol)
+	protected void closeAndReOpen(final InetAddress gwAddress, final int gwPort, final ModbusProtocolVariant gwProtocol)
 	{
 		MasterConnection connection = this.connectionPool.get(gwAddress);
 		
 		if ((connection != null) && (!connection.isConnected()))
 			connection.close();
 		
-		//remove the connection from the pool
+		// remove the connection from the pool
 		this.connectionPool.remove(gwAddress);
 		
 		// schedule a new timer to re-call the open function after the
@@ -951,7 +957,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		}, this.betweenTrialTimeMillis);
 	}
 	
-	private ModbusTransaction getTransaction(ModbusRequest request, MasterConnection connection,
+	protected ModbusTransaction getTransaction(ModbusRequest request, MasterConnection connection,
 			ModbusProtocolVariant protocol)
 	{
 		ModbusTransaction transaction = null;
@@ -994,3 +1000,4 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		return transaction;
 	}
 }
+
