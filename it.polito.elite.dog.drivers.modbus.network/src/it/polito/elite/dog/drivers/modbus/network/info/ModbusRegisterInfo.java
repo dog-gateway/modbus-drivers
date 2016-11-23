@@ -239,5 +239,88 @@ public class ModbusRegisterInfo
 	{
 		this.gatewayProtocol = gatewayProtocol;
 	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#hashCode()
+	 */
+	@Override
+	public int hashCode()
+	{
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + address;
+		result = prime * result + ((gatewayIPAddress == null) ? 0
+				: gatewayIPAddress.hashCode());
+		result = prime * result
+				+ ((gatewayPort == null) ? 0 : gatewayPort.hashCode());
+		result = prime * result
+				+ ((gatewayProtocol == null) ? 0 : gatewayProtocol.hashCode());
+		result = prime * result + slaveId;
+		return result;
+	}
+
+	/* (non-Javadoc)
+	 * @see java.lang.Object#equals(java.lang.Object)
+	 */
+	@Override
+	public boolean equals(Object obj)
+	{
+		if (this == obj)
+		{
+			return true;
+		}
+		if (obj == null)
+		{
+			return false;
+		}
+		if (!(obj instanceof ModbusRegisterInfo))
+		{
+			return false;
+		}
+		ModbusRegisterInfo other = (ModbusRegisterInfo) obj;
+		if (address != other.address)
+		{
+			return false;
+		}
+		if (gatewayIPAddress == null)
+		{
+			if (other.gatewayIPAddress != null)
+			{
+				return false;
+			}
+		}
+		else if (!gatewayIPAddress.equals(other.gatewayIPAddress))
+		{
+			return false;
+		}
+		if (gatewayPort == null)
+		{
+			if (other.gatewayPort != null)
+			{
+				return false;
+			}
+		}
+		else if (!gatewayPort.equals(other.gatewayPort))
+		{
+			return false;
+		}
+		if (gatewayProtocol == null)
+		{
+			if (other.gatewayProtocol != null)
+			{
+				return false;
+			}
+		}
+		else if (!gatewayProtocol.equals(other.gatewayProtocol))
+		{
+			return false;
+		}
+		if (slaveId != other.slaveId)
+		{
+			return false;
+		}
+		return true;
+	}
 		
+	
 }

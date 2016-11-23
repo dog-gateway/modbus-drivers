@@ -704,6 +704,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		this.logger.log(LogService.LOG_INFO, ModbusDriverImpl.logId + "Using port: " + gwPort);
 		
 		// adds a given register-driver association
+		// TODO: check if any register can be associated to more than one driver
 		this.register2Driver.put(register, driver);
 		
 		// fills the reverse map
