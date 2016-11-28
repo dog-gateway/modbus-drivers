@@ -355,4 +355,26 @@ public abstract class ModbusDriverInstance implements StatefulDevice
 	{
 		return gwProtocol;
 	}	
+	
+	/**
+	 * @return the set of managed registers
+	 */
+	public Set<ModbusRegisterInfo> getManagedRegisters(){
+		return this.managedRegisters;
+	}
+	
+	/**
+	 * @return the attached device
+	 */
+	public ControllableDevice getAttachedDevice(){
+		return this.device;
+	}
+	
+	/**
+	 * @return the network
+	 */
+	public ModbusNetwork getNetwork(){
+		return this.network;
+	}
+	
 }
