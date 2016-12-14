@@ -234,7 +234,7 @@ public class ModbusCo2SensorDriver implements Driver
 				
 				ControllableDevice device = (ControllableDevice) this.context.getService(reference);
 				
-				for ( ModbusLightSensorDriverInstance instance : this.connectedDrivers ){
+				for ( ModbusCo2SensorDriverInstance instance : this.connectedDrivers ){
 					
 					if (instance.getAttachedDevice().getDeviceId().equals(device.getDeviceId())
 							&& instance.getNetwork().equals(network)
