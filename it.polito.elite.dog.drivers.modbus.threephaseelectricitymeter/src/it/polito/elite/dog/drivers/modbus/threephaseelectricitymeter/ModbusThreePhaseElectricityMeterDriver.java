@@ -239,7 +239,7 @@ public class ModbusThreePhaseElectricityMeterDriver implements Driver
 				
 				ControllableDevice device = (ControllableDevice) this.context.getService(reference);
 				
-				for ( ModbusLightSensorDriverInstance instance : this.connectedDrivers ){
+				for ( ModbusThreePhaseElectricityMeterDriverInstance instance : this.connectedDrivers ){
 					
 					if (instance.getAttachedDevice().getDeviceId().equals(device.getDeviceId())
 							&& instance.getNetwork().equals(network)
