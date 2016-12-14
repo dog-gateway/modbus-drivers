@@ -249,7 +249,7 @@ public class ModbusOnOffDeviceDriver implements Driver
 				
 				ControllableDevice device = (ControllableDevice) this.context.getService(reference);
 				
-				for ( ModbusLightSensorDriverInstance instance : this.connectedDrivers ){
+				for ( ModbusOnOffDeviceDriverInstance instance : this.connectedDrivers ){
 					
 					if (instance.getAttachedDevice().getDeviceId().equals(device.getDeviceId())
 							&& instance.getNetwork().equals(network)
