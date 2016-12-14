@@ -226,20 +226,41 @@ public class ModbusSingleTemperatureSensorDriver implements Driver
 	{
 		if (this.regDriver != null)
 		{
-			// get the gateway to which the device is connected
-			String gateway = (String) ((ControllableDevice) this.context.getService(reference)).getDeviceDescriptor()
-					.getGateway();
-			
-			// create a new driver instance
-			ModbusSingleTemperatureSensorDriverInstance driverInstance = new ModbusSingleTemperatureSensorDriverInstance(
-					network, (ControllableDevice) this.context.getService(reference), this.gateway.getSpecificGateway(
-							gateway).getGatewayAddress(), this.gateway.getSpecificGateway(gateway).getGatewayPort(),
-					this.gateway.getSpecificGateway(gateway).getGwProtocol(), this.context);
-			
-			((ControllableDevice) context.getService(reference)).setDriver(driverInstance);
-			
 			synchronized (this.connectedDrivers)
 			{
+				
+				// With the control below we guarantee that a device is attached to only one driver instance
+				// In this way we solve a bug that allowed a device to be attached to multiple instances of the same driver
+				
+				ControllableDevice device = (ControllableDevice) this.context.getService(reference);
+				
+				for ( ModbusSingleTemperatureSensorDriverInstance instance : this.connectedDrivers ){
+					
+					if (instance.getAttachedDevice().getDeviceId().equals(device.getDeviceId())
+							&& instance.getNetwork().equals(network)
+							&& instance.getGatewayAddress().equals(this.gateway.getSpecificGateway( device.getDeviceDescriptor().getGateway()).getGatewayAddress())
+							&& instance.getGatewayPort().equals(this.gateway.getSpecificGateway( device.getDeviceDescriptor().getGateway()).getGatewayPort())
+							&& instance.getGwProtocol().equals(this.gateway.getSpecificGateway( device.getDeviceDescriptor().getGateway()).getGwProtocol()))
+							{
+						
+						return null;
+						
+					}
+					
+				}
+				
+				// get the gateway to which the device is connected
+				String gateway = (String) ((ControllableDevice) this.context.getService(reference)).getDeviceDescriptor()
+						.getGateway();
+
+				// create a new driver instance
+				ModbusSingleTemperatureSensorDriverInstance driverInstance = new ModbusSingleTemperatureSensorDriverInstance(
+						network, (ControllableDevice) this.context.getService(reference), this.gateway.getSpecificGateway(
+								gateway).getGatewayAddress(), this.gateway.getSpecificGateway(gateway).getGatewayPort(),
+						this.gateway.getSpecificGateway(gateway).getGwProtocol(), this.context);
+
+				((ControllableDevice) context.getService(reference)).setDriver(driverInstance);
+			
 				this.connectedDrivers.add(driverInstance);
 			}
 		}
