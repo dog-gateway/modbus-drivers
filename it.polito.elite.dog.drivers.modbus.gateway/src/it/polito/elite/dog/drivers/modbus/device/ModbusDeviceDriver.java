@@ -208,7 +208,7 @@ public abstract class ModbusDeviceDriver implements Driver
 							this.gateway.get().getSpecificGateway(gateway)
 									.getGwProtocol(),
 							this.context);
-			
+
 			// connect this driver instance with the device
 			device.setDriver(driverInstance);
 
@@ -218,6 +218,14 @@ public abstract class ModbusDeviceDriver implements Driver
 				this.managedInstances.put(device.getDeviceId(), driverInstance);
 			}
 		}
+		// TODO check if this is needed to ensure the right device usage count on the framework.
+		/*
+		else
+		{
+			// the device is already attached, unget the service to avoid
+			// leaving "wrong" usage counts on the framework
+			this.context.ungetService(reference);
+		}*/
 		return null;
 	}
 
