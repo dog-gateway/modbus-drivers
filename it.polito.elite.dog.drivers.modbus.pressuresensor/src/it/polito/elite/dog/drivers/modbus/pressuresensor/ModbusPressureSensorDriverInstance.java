@@ -155,8 +155,7 @@ public class ModbusPressureSensorDriverInstance extends ModbusDriverInstance imp
 				{
 					// log notification
 					this.logger
-							.log(LogService.LOG_DEBUG,
-									ModbusPressureSensorDriver.logId + "Device: " + this.device.getDeviceId()
+							.log(LogService.LOG_DEBUG, "Device: " + this.device.getDeviceId()
 											+ " is notifying " + notificationName + " value:"
 											+ register.getXlator().getValue());
 					// get the method
@@ -169,8 +168,7 @@ public class ModbusPressureSensorDriverInstance extends ModbusDriverInstance imp
 				catch (Exception e)
 				{
 					// log the error
-					this.logger.log(LogService.LOG_WARNING, ModbusPressureSensorDriver.logId
-							+ "Unable to find a suitable notification method for the datapoint: " + register + ":\n"
+					this.logger.log(LogService.LOG_WARNING, "Unable to find a suitable notification method for the datapoint: " + register + ":\n"
 							+ e);
 				}
 				

@@ -307,7 +307,7 @@ public class ModbusThreePhaseElectricityMeterDriverInstance extends ModbusDriver
 				try
 				{
 					// log notification
-					this.logger.log(LogService.LOG_DEBUG, ModbusThreePhaseElectricityMeterDriver.logId + "Device: "
+					this.logger.log(LogService.LOG_DEBUG, "Device: "
 							+ this.device.getDeviceId() + " is notifying " + notificationName + " value:"
 							+ register.getXlator().getValue());
 					// get the method
@@ -330,8 +330,7 @@ public class ModbusThreePhaseElectricityMeterDriverInstance extends ModbusDriver
 				catch (Exception e)
 				{
 					// log the error
-					this.logger.log(LogService.LOG_WARNING, ModbusThreePhaseElectricityMeterDriver.logId
-							+ "Unable to find a suitable notification method for the datapoint: " + register + ":\n"
+					this.logger.log(LogService.LOG_WARNING, "Unable to find a suitable notification method for the datapoint: " + register + ":\n"
 							+ e);
 				}
 				
@@ -467,7 +466,7 @@ public class ModbusThreePhaseElectricityMeterDriverInstance extends ModbusDriver
 		ActiveEnergyStateValue activeEnergyStateValue = new ActiveEnergyStateValue();
 		activeEnergyStateValue.setValue(DecimalMeasure.valueOf("0 " + activeEnergyUOM));
 		this.currentState.setState(SinglePhaseActiveEnergyState.class.getSimpleName(),
-				new SinglePhaseActiveEnergyState(activeEnergyStateValue));
+				new SinglePhaseActiveEnergyState(new StateValue[]{activeEnergyStateValue}));
 		// ------------------------------------------------------------------
 		
 		// -------------- ThreePhaseCurrent ---------------------------------
@@ -535,7 +534,7 @@ public class ModbusThreePhaseElectricityMeterDriverInstance extends ModbusDriver
 		ReactiveEnergyStateValue reactiveEnergyStateValue = new ReactiveEnergyStateValue();
 		reactiveEnergyStateValue.setValue(DecimalMeasure.valueOf("0 " + reactiveEnergyUOM));
 		this.currentState.setState(SinglePhaseReactiveEnergyState.class.getSimpleName(),
-				new SinglePhaseReactiveEnergyState(reactiveEnergyStateValue));
+				new SinglePhaseReactiveEnergyState(new StateValue[]{reactiveEnergyStateValue}));
 		// -----------------------------------------------------------------------
 		
 		// ------------------------ ThreePhaseLNVoltage

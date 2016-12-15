@@ -46,30 +46,32 @@ import org.osgi.service.log.LogService;
  * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  * 
  */
-public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance implements HumiditySensor
+public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance
+		implements HumiditySensor
 {
 	// the class logger
 	private LogHelper logger;
-	
+
 	/**
 	 * @param network
 	 * @param device
 	 * @param gatewayAddress
 	 * @param context
 	 */
-	public ModbusHumiditySensorDriverInstance(ModbusNetwork network, ControllableDevice device, String gatewayAddress,
+	public ModbusHumiditySensorDriverInstance(ModbusNetwork network,
+			ControllableDevice device, String gatewayAddress,
 			String gatewayPort, String gatewayProtocol, BundleContext context)
 	{
 		super(network, device, gatewayAddress, gatewayPort, gatewayProtocol);
-		
+
 		// create a logger
 		this.logger = new LogHelper(context);
-		
+
 		// TODO: get the initial state of the device....(states can be updated
 		// by reading notification group addresses)
 		this.initializeStates();
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -80,10 +82,11 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance imp
 	@Override
 	public Measure<?, ?> getRelativeHumidity()
 	{
-		return (Measure<?, ?>) this.currentState.getState(HumidityMeasurementState.class.getSimpleName())
+		return (Measure<?, ?>) this.currentState
+				.getState(HumidityMeasurementState.class.getSimpleName())
 				.getCurrentStateValue()[0].getValue();
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -95,7 +98,7 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance imp
 	{
 		return this.currentState;
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -108,13 +111,15 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance imp
 		// update the state
 		HumidityStateValue pValue = new HumidityStateValue();
 		pValue.setValue(humidityValue);
-		this.currentState
-				.setState(HumidityMeasurementState.class.getSimpleName(), new HumidityMeasurementState(pValue));
-		
+		this.currentState.setState(
+				HumidityMeasurementState.class.getSimpleName(),
+				new HumidityMeasurementState(pValue));
+
 		// notify the new measure
-		((HumiditySensor) this.device).notifyChangedRelativeHumidity(humidityValue);
+		((HumiditySensor) this.device)
+				.notifyChangedRelativeHumidity(humidityValue);
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -128,50 +133,53 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance imp
 		if (value != null)
 		{
 			// gets the corresponding notification set...
-			Set<CNParameters> notificationInfos = this.register2Notification.get(register);
-			
+			Set<CNParameters> notificationInfos = this.register2Notification
+					.get(register);
+
 			// handle the notifications
 			for (CNParameters notificationInfo : notificationInfos)
 			{
 				// black magic here...
 				String notificationName = notificationInfo.getName();
-				
+
 				// get the hypothetical class method name
-				String notifyMethod = "notify" + Character.toUpperCase(notificationName.charAt(0))
+				String notifyMethod = "notify"
+						+ Character.toUpperCase(notificationName.charAt(0))
 						+ notificationName.substring(1);
-				
+
 				// search the method and execute it
 				try
 				{
 					// log notification
-					this.logger
-							.log(LogService.LOG_DEBUG,
-									ModbusHumiditySensorDriver.logId + "Device: " + this.device.getDeviceId()
-											+ " is notifying " + notificationName + " value:"
-											+ register.getXlator().getValue());
+					this.logger.log(LogService.LOG_DEBUG,
+							"Device: " + this.device.getDeviceId()
+									+ " is notifying " + notificationName
+									+ " value:"
+									+ register.getXlator().getValue());
 					// get the method
-					
-					Method notify = ModbusHumiditySensorDriverInstance.class.getDeclaredMethod(notifyMethod,
-							Measure.class);
+
+					Method notify = ModbusHumiditySensorDriverInstance.class
+							.getDeclaredMethod(notifyMethod, Measure.class);
 					// invoke the method
-					notify.invoke(this, DecimalMeasure.valueOf(register.getXlator().getValue()));
+					notify.invoke(this, DecimalMeasure
+							.valueOf(register.getXlator().getValue()));
 				}
 				catch (Exception e)
 				{
 					// log the error
-					this.logger.log(LogService.LOG_WARNING, ModbusHumiditySensorDriver.logId
-							+ "Unable to find a suitable notification method for the datapoint: " + register + ":\n"
-							+ e);
+					this.logger.log(LogService.LOG_WARNING,
+							"Unable to find a suitable notification method for the datapoint: "
+									+ register + ":\n" + e);
 				}
-				
+
 				// notify the monitor admin
 				this.updateStatus();
-				
+
 			}
 		}
-		
+
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -184,7 +192,7 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance imp
 	{
 		((HumiditySensor) this.device).updateStatus();
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -196,9 +204,9 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance imp
 	{
 		// prepare the device state map
 		this.currentState = new DeviceStatus(device.getDeviceId());
-		
+
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -211,7 +219,7 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance imp
 	{
 		this.network.addDriver(register, this);
 	}
-	
+
 	private void initializeStates()
 	{
 		// Since this driver handles the device metering according to a well
@@ -219,31 +227,34 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance imp
 		// notifications handled by this device except from state notifications
 		Unit<Dimensionless> PERCENTAGE = Unit.ONE.alternate("%");
 		String humidityUOM = PERCENTAGE.toString();
-		
+
 		// search the energy unit of measures declared in the device
 		// configuration
 		for (ModbusRegisterInfo register : this.register2Notification.keySet())
 		{
-			Set<CNParameters> notificationInfos = this.register2Notification.get(register);
-			
+			Set<CNParameters> notificationInfos = this.register2Notification
+					.get(register);
+
 			for (CNParameters notificationInfo : notificationInfos)
 			{
-				
-				if (notificationInfo.getName().equalsIgnoreCase(HumidityMeasurementNotification.notificationName))
+
+				if (notificationInfo.getName().equalsIgnoreCase(
+						HumidityMeasurementNotification.notificationName))
 				{
 					humidityUOM = register.getXlator().getUnitOfMeasure();
 				}
 			}
 		}
-		
+
 		// create all the states
 		HumidityStateValue pValue = new HumidityStateValue();
 		pValue.setValue(DecimalMeasure.valueOf("0 " + humidityUOM));
-		this.currentState
-				.setState(HumidityMeasurementState.class.getSimpleName(), new HumidityMeasurementState(pValue));
-		
+		this.currentState.setState(
+				HumidityMeasurementState.class.getSimpleName(),
+				new HumidityMeasurementState(pValue));
+
 		// read the initial state
 		this.network.readAll(this.register2Notification.keySet());
 	}
-	
+
 }

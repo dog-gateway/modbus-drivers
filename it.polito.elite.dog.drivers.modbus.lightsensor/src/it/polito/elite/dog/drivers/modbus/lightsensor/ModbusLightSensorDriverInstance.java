@@ -117,8 +117,7 @@ public class ModbusLightSensorDriverInstance extends ModbusDriverInstance implem
 				try
 				{
 					// log notification
-					this.logger.log(LogService.LOG_DEBUG,
-							ModbusLightSensorDriver.logId + "Device: " + this.device.getDeviceId() + " is notifying "
+					this.logger.log(LogService.LOG_DEBUG,"Device: " + this.device.getDeviceId() + " is notifying "
 									+ notificationName + " value:" + register.getXlator().getValue());
 					// get the method
 					
@@ -130,8 +129,7 @@ public class ModbusLightSensorDriverInstance extends ModbusDriverInstance implem
 				catch (Exception e)
 				{
 					// log the error
-					this.logger.log(LogService.LOG_WARNING, ModbusLightSensorDriver.logId
-							+ "Unable to find a suitable notification method for the datapoint: " + register + ":\n"
+					this.logger.log(LogService.LOG_WARNING, "Unable to find a suitable notification method for the datapoint: " + register + ":\n"
 							+ e);
 				}
 				
