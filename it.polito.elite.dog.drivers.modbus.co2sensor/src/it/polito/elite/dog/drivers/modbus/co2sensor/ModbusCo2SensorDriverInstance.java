@@ -46,30 +46,32 @@ import org.osgi.service.log.LogService;
  * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  * 
  */
-public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance implements Co2Sensor
+public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance
+		implements Co2Sensor
 {
 	// the class logger
 	private LogHelper logger;
-	
+
 	/**
 	 * @param network
 	 * @param device
 	 * @param gatewayAddress
 	 * @param context
 	 */
-	public ModbusCo2SensorDriverInstance(ModbusNetwork network, ControllableDevice device, String gatewayAddress,
+	public ModbusCo2SensorDriverInstance(ModbusNetwork network,
+			ControllableDevice device, String gatewayAddress,
 			String gatewayPort, String gatewayProtocol, BundleContext context)
 	{
 		super(network, device, gatewayAddress, gatewayPort, gatewayProtocol);
-		
+
 		// create a logger
 		this.logger = new LogHelper(context);
-		
+
 		// TODO: get the initial state of the device....(states can be updated
 		// by reading notification group addresses)
 		this.initializeStates();
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -78,10 +80,11 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance implemen
 	@Override
 	public Measure<?, ?> getCo2Concentration()
 	{
-		return (Measure<?, ?>) this.currentState.getState(Co2MeasurementState.class.getSimpleName())
+		return (Measure<?, ?>) this.currentState
+				.getState(Co2MeasurementState.class.getSimpleName())
 				.getCurrentStateValue()[0].getValue();
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -92,7 +95,7 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance implemen
 	{
 		return this.currentState;
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -105,12 +108,14 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance implemen
 		// update the state
 		Co2MeasurementStateValue pValue = new Co2MeasurementStateValue();
 		pValue.setValue(co2Concentration);
-		this.currentState.setState(Co2MeasurementState.class.getSimpleName(), new Co2MeasurementState(pValue));
-		
+		this.currentState.setState(Co2MeasurementState.class.getSimpleName(),
+				new Co2MeasurementState(pValue));
+
 		// notify the new measure
-		((Co2Sensor) this.device).notifyChangedCo2Concentration(co2Concentration);
+		((Co2Sensor) this.device)
+				.notifyChangedCo2Concentration(co2Concentration);
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -124,46 +129,52 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance implemen
 		if (value != null)
 		{
 			// gets the corresponding notification set...
-			Set<CNParameters> notificationInfos = this.register2Notification.get(register);
-			
+			Set<CNParameters> notificationInfos = this.register2Notification
+					.get(register);
+
 			// handle the notifications
 			for (CNParameters notificationInfo : notificationInfos)
 			{
 				// black magic here...
 				String notificationName = notificationInfo.getName();
-				
+
 				// get the hypothetical class method name
-				String notifyMethod = "notify" + Character.toUpperCase(notificationName.charAt(0))
+				String notifyMethod = "notify"
+						+ Character.toUpperCase(notificationName.charAt(0))
 						+ notificationName.substring(1);
-				
+
 				// search the method and execute it
 				try
 				{
 					// log notification
 					this.logger.log(LogService.LOG_DEBUG,
-							ModbusCo2SensorDriver.logId + "Device: " + this.device.getDeviceId() + " is notifying "
-									+ notificationName + " value:" + register.getXlator().getValue());
+							"Device: " + this.device.getDeviceId()
+									+ " is notifying " + notificationName
+									+ " value:"
+									+ register.getXlator().getValue());
 					// get the method
-					
-					Method notify = ModbusCo2SensorDriverInstance.class.getDeclaredMethod(notifyMethod, Measure.class);
+
+					Method notify = ModbusCo2SensorDriverInstance.class
+							.getDeclaredMethod(notifyMethod, Measure.class);
 					// invoke the method
-					notify.invoke(this, DecimalMeasure.valueOf(register.getXlator().getValue()));
+					notify.invoke(this, DecimalMeasure
+							.valueOf(register.getXlator().getValue()));
 				}
 				catch (Exception e)
 				{
 					// log the error
-					this.logger.log(LogService.LOG_WARNING, ModbusCo2SensorDriver.logId
-							+ "Unable to find a suitable notification method for the datapoint: " + register + ":\n"
-							+ e);
+					this.logger.log(LogService.LOG_WARNING,
+							"Unable to find a suitable notification method for the datapoint: "
+									+ register + ":\n" + e);
 				}
-				
+
 				// notify the monitor admin
 				this.updateStatus();
 			}
 		}
-		
+
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -175,22 +186,21 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance implemen
 	{
 		// prepare the device state map
 		this.currentState = new DeviceStatus(device.getDeviceId());
-		
+
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
-	 * @see
-	 * it.polito.elite.dog.core.library.model.devicecategory.Co2Sensor#updateStatus
-	 * ()
+	 * @see it.polito.elite.dog.core.library.model.devicecategory.Co2Sensor#
+	 * updateStatus ()
 	 */
 	@Override
 	public void updateStatus()
 	{
 		((Co2Sensor) this.device).updateStatus();
 	}
-	
+
 	/*
 	 * (non-Javadoc)
 	 * 
@@ -203,7 +213,7 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance implemen
 	{
 		this.network.addDriver(register, this);
 	}
-	
+
 	private void initializeStates()
 	{
 		// Since this driver handles the device metering according to a well
@@ -211,28 +221,31 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance implemen
 		// notifications handled by this device except from state notifications
 		Unit<Dimensionless> PPM = Unit.ONE.alternate("ppm");
 		String Co2UOM = PPM.toString();
-		
+
 		// search the energy unit of measures declared in the device
 		// configuration
 		for (ModbusRegisterInfo register : this.register2Notification.keySet())
 		{
-			Set<CNParameters> notificationInfos = this.register2Notification.get(register);
-			
+			Set<CNParameters> notificationInfos = this.register2Notification
+					.get(register);
+
 			for (CNParameters notificationInfo : notificationInfos)
 			{
-				
-				if (notificationInfo.getName().equalsIgnoreCase(Co2MeasurementNotification.notificationName))
+
+				if (notificationInfo.getName().equalsIgnoreCase(
+						Co2MeasurementNotification.notificationName))
 				{
 					Co2UOM = register.getXlator().getUnitOfMeasure();
 				}
 			}
 		}
-		
+
 		// create all the states
 		Co2MeasurementStateValue pValue = new Co2MeasurementStateValue();
 		pValue.setValue(DecimalMeasure.valueOf("0 " + Co2UOM));
-		this.currentState.setState(Co2MeasurementState.class.getSimpleName(), new Co2MeasurementState(pValue));
-		
+		this.currentState.setState(Co2MeasurementState.class.getSimpleName(),
+				new Co2MeasurementState(pValue));
+
 		// read the initial state
 		this.network.readAll(this.register2Notification.keySet());
 	}

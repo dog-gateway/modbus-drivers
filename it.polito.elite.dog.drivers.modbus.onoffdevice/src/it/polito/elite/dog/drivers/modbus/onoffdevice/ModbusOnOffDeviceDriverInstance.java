@@ -199,7 +199,7 @@ public class ModbusOnOffDeviceDriverInstance extends ModbusDriverInstance implem
 		this.currentState.setState(newState.getStateName(), newState);
 		
 		// debug
-		this.logger.log(LogService.LOG_DEBUG, ModbusOnOffDeviceDriver.logId + "Device " + this.device.getDeviceId()
+		this.logger.log(LogService.LOG_DEBUG, "Device " + this.device.getDeviceId()
 				+ " is now " + ((OnOffState) newState).getCurrentStateValue()[0].getValue());
 		
 		this.updateStatus();

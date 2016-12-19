@@ -28,6 +28,7 @@ import java.util.Hashtable;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.Constants;
@@ -63,7 +64,7 @@ public class ModbusGatewayDriver implements Driver
 	// a reference to the network driver (currently not used by this driver
 	// version, in the future it will be used to implement gateway-specific
 	// functionalities.
-	private ModbusNetwork network;
+	private AtomicReference<ModbusNetwork> network;
 	
 	// the registration object needed to handle the life span of this bundle in
 	// the OSGi framework (it is a ServiceRegistration object for use by the
@@ -82,6 +83,9 @@ public class ModbusGatewayDriver implements Driver
 	
 	public ModbusGatewayDriver()
 	{
+		//initialize the atomic reference to the network
+		this.network = new AtomicReference<ModbusNetwork>();
+		
 		// initialize the map of connected gateways
 		this.connectedGateways = new ConcurrentHashMap<String, ModbusGatewayDriverInstance>();
 	}
@@ -140,7 +144,7 @@ public class ModbusGatewayDriver implements Driver
 	
 	public void addingService(ModbusNetwork networkDriver)
 	{
-		this.network = networkDriver;
+		this.network.set(networkDriver);
 		
 		if ((this.context != null) && (this.regDriver == null))
 			this.registerDriver();
@@ -163,8 +167,8 @@ public class ModbusGatewayDriver implements Driver
 	public void removedService(ModbusNetwork networkDriver)
 	{
 		// unregisters this driver from the OSGi framework
-		this.network = null;
-		this.unRegister();
+		if(this.network.compareAndSet(networkDriver, null))
+			this.unRegister();
 	}
 	
 	@SuppressWarnings("rawtypes")
@@ -238,7 +242,7 @@ public class ModbusGatewayDriver implements Driver
 					if (!this.isGatewayAvailable(deviceId))
 					{
 						// create a new instance of the gateway driver
-						ModbusGatewayDriverInstance driver = new ModbusGatewayDriverInstance(this.network,
+						ModbusGatewayDriverInstance driver = new ModbusGatewayDriverInstance(this.network.get(),
 								(ControllableDevice) this.context.getService(reference), gatewayAddress, gatewayPort,
 								gatewayProtocol, this.context);
 						
@@ -315,6 +319,6 @@ public class ModbusGatewayDriver implements Driver
 	 */
 	public ModbusNetwork getNetwork()
 	{
-		return network;
+		return this.network.get();
 	}
 }
