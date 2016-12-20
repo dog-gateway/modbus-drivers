@@ -27,6 +27,27 @@ import it.polito.elite.dog.core.library.model.ConfigurationConstants;
  */
 public class ModbusInfo extends ConfigurationConstants
 {
+	// for serial port connection the port name used
+	public static final String PORT_NAME = "portName";
+
+	// for the serial port connection the baud rate used
+	public static final String BAUD_RATE = "baudRate";
+
+	// for the serial port connection the data bits used
+	public static final Object DATA_BITS = "dataBits";
+
+	// for the serial port connection the parity used
+	public static final Object PARITY = "parity";
+
+	// for the serial port connection the stop bits used
+	public static final Object STOP_BITS = "stopBits";
+
+	// for the serial port connection the encoding used
+	public static final Object ENCODING = "encoding";
+
+	// for the serial port connection the indication if the echo is used or not
+	public static final Object ECHO = "echo";
+	
 	// the manufacturer identifier (Modbus)
 	public static String MANUFACTURER = "Modbus";	
 	

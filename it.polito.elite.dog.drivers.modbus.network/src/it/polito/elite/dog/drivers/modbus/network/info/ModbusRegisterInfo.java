@@ -19,6 +19,7 @@ package it.polito.elite.dog.drivers.modbus.network.info;
 
 import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlatorTypes;
+import net.wimpi.modbus.util.SerialParameters;
 
 import java.net.InetAddress;
 
@@ -36,6 +37,9 @@ public class ModbusRegisterInfo
 	// the modbus port exposed by the gateway
 	private String gatewayPort;
 	
+	// the serial parameters for the RTU devices
+	private SerialParameters serialParameters;
+
 	// the protocol variant used by the gateway
 	private String gatewayProtocol;
 	
@@ -240,6 +244,20 @@ public class ModbusRegisterInfo
 		this.gatewayProtocol = gatewayProtocol;
 	}
 
+	/**
+	 * @return the serialParameters
+	 */
+	public SerialParameters getSerialParameters() {
+		return serialParameters;
+	}
+	
+	/**
+	 * @param serialParameters the serialParameters to set
+	 */
+	public void setSerialParameters(SerialParameters serialParameters) {
+		this.serialParameters = serialParameters;
+	}
+	
 	/* (non-Javadoc)
 	 * @see java.lang.Object#hashCode()
 	 */
