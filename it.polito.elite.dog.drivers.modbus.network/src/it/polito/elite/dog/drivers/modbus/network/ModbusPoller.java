@@ -159,32 +159,36 @@ public class ModbusPoller extends Thread
 				this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + MAX_BLACKLIST_POLLING_CYCLES + " cycles are passed, removing from blacklist reg: " + register.getAddress() + " (slaveId " + register.getSlaveId() + ")");
             	
 				it.remove();
-                continue;
-            }
+                		continue;
+            		}
 			
-            this.blacklist.put(register, (Integer)this.blacklist.get(register) - 1);
+            		this.blacklist.put(register, (Integer)this.blacklist.get(register) - 1);
             
 		}
 		
-        this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + brokenRegisters.size() + " new broken registers");
-        if (brokenRegisters.size() == 0) {
-            this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + " no broken registers");
-        }
-        for (ModbusRegisterInfo register2 : brokenRegisters) {
-            this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + " broken reg: " + register2.getAddress() + " (slaveId " + register2.getSlaveId() + ")");
-            this.blacklist.put(register2, MAX_BLACKLIST_POLLING_CYCLES);
-        }
+        	this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + brokenRegisters.size() + " new broken registers");
+        	
+		if (brokenRegisters.size() == 0) {
+            		this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + " no broken registers");
+        	}
+		
+		for (ModbusRegisterInfo register2 : brokenRegisters) {
+		    this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + " broken reg: " + register2.getAddress() + " (slaveId " + register2.getSlaveId() + ")");
+		    this.blacklist.put(register2, MAX_BLACKLIST_POLLING_CYCLES);
+		}
 		
 	}
 
 	private void filterRegisters(Set<ModbusRegisterInfo> registers) {
 		
 		Iterator<ModbusRegisterInfo> it = registers.iterator();
-        while (it.hasNext()) {
-            ModbusRegisterInfo register = it.next();
-            if (!this.blacklist.containsKey(register)) continue;
-            it.remove();
-        }
+		
+	        while (it.hasNext()) {
+        	    ModbusRegisterInfo register = it.next();
+	            if (!this.blacklist.containsKey(register)) 
+		    	continue;
+        	    it.remove();
+	        }
 		
 	}
 
