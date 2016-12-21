@@ -30,6 +30,10 @@ import net.wimpi.modbus.msg.ModbusResponse;
 import net.wimpi.modbus.net.MasterConnection;
 
 import java.net.InetAddress;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Set;
 
 import org.osgi.service.log.LogService;
@@ -65,6 +69,10 @@ public class ModbusPoller extends Thread
 
 	// the log identifier, unique for the class
 	public static String logId = "[ModbusPoller]: ";
+	
+	// blacklist
+	public static Integer MAX_BLACKLIST_POLLING_CYCLES = 80;
+	public Map<ModbusRegisterInfo, Integer> blacklist;
 
 	public ModbusPoller(ModbusDriverImpl modbusDriverImpl,
 			InetAddress gwAddress)
@@ -77,6 +85,9 @@ public class ModbusPoller extends Thread
 
 		// store the gateway address
 		this.gatewayAddress = gwAddress;
+		
+		// init the blacklist
+		this.blacklist = new HashMap<ModbusRegisterInfo, Integer>();
 	}
 
 	/*
@@ -101,7 +112,19 @@ public class ModbusPoller extends Thread
 			// check not null
 			if (registers != null)
 			{
-				this.readAll(registers);
+				Integer allRegisters = registers.size();
+				
+				// remove broken registers
+				this.filterRegisters(registers);
+				
+				this.logger.log(LogService.LOG_DEBUG,
+						ModbusPoller.logId + "Reading " + registers.size() + "/" + allRegisters + " registers");
+				
+				Set<ModbusRegisterInfo> brokenRegisters = this.readAll(registers);
+				
+				// add new broken registers to the blacklist and remove registers in the blacklist from MAX_BLACKLIST_POLLING_CYCLES cycles
+				this.handleBrokenRegisters(brokenRegisters);
+				
 			}
 
 			// ok now the polling cycle has ended and the poller can sleep for
@@ -121,6 +144,48 @@ public class ModbusPoller extends Thread
 
 		// auto-reset the state at runnable...
 		this.runnable = true;
+	}
+	
+	private void handleBrokenRegisters(Set<ModbusRegisterInfo> brokenRegisters) {
+		
+		Iterator<ModbusRegisterInfo> it = this.blacklist.keySet().iterator();
+		
+		while( it.hasNext() ){
+			
+			ModbusRegisterInfo register = it.next();
+			
+			if ((Integer)this.blacklist.get(register) == 0) {
+				
+				this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + MAX_BLACKLIST_POLLING_CYCLES + " cycles are passed, removing from blacklist reg: " + register.getAddress() + " (slaveId " + register.getSlaveId() + ")");
+            	
+				it.remove();
+                continue;
+            }
+			
+            this.blacklist.put(register, (Integer)this.blacklist.get(register) - 1);
+            
+		}
+		
+        this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + brokenRegisters.size() + " new broken registers");
+        if (brokenRegisters.size() == 0) {
+            this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + " no broken registers");
+        }
+        for (ModbusRegisterInfo register2 : brokenRegisters) {
+            this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + " broken reg: " + register2.getAddress() + " (slaveId " + register2.getSlaveId() + ")");
+            this.blacklist.put(register2, MAX_BLACKLIST_POLLING_CYCLES);
+        }
+		
+	}
+
+	private void filterRegisters(Set<ModbusRegisterInfo> registers) {
+		
+		Iterator<ModbusRegisterInfo> it = registers.iterator();
+        while (it.hasNext()) {
+            ModbusRegisterInfo register = it.next();
+            if (!this.blacklist.containsKey(register)) continue;
+            it.remove();
+        }
+		
 	}
 
 	/**
@@ -142,10 +207,14 @@ public class ModbusPoller extends Thread
 	 * 
 	 * @param registers
 	 */
-	private void readAll(final Set<ModbusRegisterInfo> registers)
+	private Set<ModbusRegisterInfo> readAll(final Set<ModbusRegisterInfo> registers)
 	{
+		Set<ModbusRegisterInfo> brokenRegisters = new HashSet<ModbusRegisterInfo>();
+		
 		if ((registers != null) && (!registers.isEmpty()))
 		{
+			Boolean read = false;
+			
 			// get the address of the modbus gateway, which is supposed to be
 			// the same for all registers...
 			ModbusRegisterInfo mInfo = registers.iterator().next();
@@ -181,6 +250,7 @@ public class ModbusPoller extends Thread
 				// successfully connected
 				this.logger.log(LogService.LOG_DEBUG, ModbusDriverImpl.logId
 						+ "Successfully connected to the Modbus TCP Slave");
+				
 				synchronized (registers)
 				{
 					for (ModbusRegisterInfo register : registers)
@@ -228,6 +298,9 @@ public class ModbusPoller extends Thread
 									.getRegister2Driver().get(register);
 							driver.newMessageFromHouse(register,
 									register.getXlator().getValue());
+							
+							read = true;
+							
 						}
 						catch (ModbusIOException e)
 						{
@@ -259,6 +332,12 @@ public class ModbusPoller extends Thread
 											+ register + "\nException: " + e);
 							// close the connection
 							modbusConnection.close();
+						}finally{
+							
+							if (read == false){
+								brokenRegisters.add(register);
+							}
+							
 						}
 
 						// stop this polling cycle if the connection is closed
@@ -289,6 +368,8 @@ public class ModbusPoller extends Thread
 				this.driver.closeAndReOpen(gwAddress, gwPort, variant);
 			}
 		}
+		
+		return brokenRegisters;
 
 	}
 }
