@@ -165,33 +165,33 @@ public class ModbusPoller extends Thread
             	
 				it.remove();
 				
-            }else{
+			}else{
 			
             	this.blacklist.put(register, cycles_passed - 1);
             }
             
 		}
 		
-        this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + brokenRegisters.size() + " new broken registers");
-        
-        if (brokenRegisters.size() == 0) {
-            this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + " no broken registers");
-        }
-        for (ModbusRegisterInfo register2 : brokenRegisters) {
-            this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + " broken reg: " + register2.getAddress() + " (slaveId " + register2.getSlaveId() + ")");
-            this.blacklist.put(register2, MAX_BLACKLIST_POLLING_CYCLES);
-        }
+		this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + brokenRegisters.size() + " new broken registers");
+		
+		if (brokenRegisters.size() == 0) {
+			this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + " no broken registers");
+		}
+		for (ModbusRegisterInfo register2 : brokenRegisters) {
+			this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + " broken reg: " + register2.getAddress() + " (slaveId " + register2.getSlaveId() + ")");
+			this.blacklist.put(register2, MAX_BLACKLIST_POLLING_CYCLES);
+		}
 		
 	}
 
 	private void filterRegisters(Set<ModbusRegisterInfo> registers) {
 		
 		Iterator<ModbusRegisterInfo> it = registers.iterator();
-        while (it.hasNext()) {
-            ModbusRegisterInfo register = it.next();
-            if (!this.blacklist.containsKey(register)) continue;
-            it.remove();
-        }
+		while (it.hasNext()) {
+			ModbusRegisterInfo register = it.next();
+			if (!this.blacklist.containsKey(register)) continue;
+			it.remove();
+		}
 		
 	}
 
