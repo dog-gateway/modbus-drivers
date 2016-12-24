@@ -100,6 +100,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 	// a reference to the connection trials timer
 	private Timer connectionTrialsTimer;
 	
+	// number of cycles that a broken register will be in the blacklist
+	private int maxBlacklistPollingCycles = 80;
+	
 	// the modbus poller
 	private Map<InetAddress, ModbusPoller> pollerPool;
 	
@@ -236,6 +239,19 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 				// parse the string
 				this.nConnectionTrials = Integer.valueOf(numTryAsString);
 			}
+
+			// try to get the maxBlacklistPollingCycles
+			String maxBlacklistPollingCyclesAsString = (String) properties.get("maxBlacklistPollingCycles");
+			
+			// trim maxBlacklistPollingCycles
+			maxBlacklistPollingCyclesAsString = maxBlacklistPollingCyclesAsString.trim();
+			
+			// check not null
+			if (maxBlacklistPollingCyclesAsString != null)
+			{
+				// parse the string
+				this.maxBlacklistPollingCycles = Integer.valueOf(maxBlacklistPollingCyclesAsString);
+			}
 			
 			// register the service
 			// register the driver service if not already registered
@@ -354,6 +370,15 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 	public Map<InetAddress, MasterConnection> getConnectionPool()
 	{
 		return connectionPool;
+	}
+	
+	/**
+	 * 
+	 * @return the maxBlacklistPollingCycles
+	 */
+	public int getMaxBlacklistPollingCycles()
+	{	
+		return this.maxBlacklistPollingCycles;
 	}
 	
 	/***************************************************************************************

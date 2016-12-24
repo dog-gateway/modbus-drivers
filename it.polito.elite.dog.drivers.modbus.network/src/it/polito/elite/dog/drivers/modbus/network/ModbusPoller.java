@@ -71,7 +71,8 @@ public class ModbusPoller extends Thread
 	public static String logId = "[ModbusPoller]: ";
 	
 	// blacklist
-	public static Integer MAX_BLACKLIST_POLLING_CYCLES = 80;
+	public static int MAX_BLACKLIST_POLLING_CYCLES;
+	
 	public Map<ModbusRegisterInfo, Integer> blacklist;
 
 	public ModbusPoller(ModbusDriverImpl modbusDriverImpl,
@@ -88,6 +89,9 @@ public class ModbusPoller extends Thread
 		
 		// init the blacklist
 		this.blacklist = new HashMap<ModbusRegisterInfo, Integer>();
+		
+		// get MAX_BLACKLIST_POLLING_CYCLES
+		MAX_BLACKLIST_POLLING_CYCLES = modbusDriverImpl.getMaxBlacklistPollingCycles();
 	}
 
 	/*
@@ -153,42 +157,41 @@ public class ModbusPoller extends Thread
 		while( it.hasNext() ){
 			
 			ModbusRegisterInfo register = it.next();
+			int cycles_passed = this.blacklist.get(register);
 			
-			if ((Integer)this.blacklist.get(register) == 0) {
+			if (cycles_passed == 0) {
 				
-				this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + MAX_BLACKLIST_POLLING_CYCLES + " cycles are passed, removing from blacklist reg: " + register.getAddress() + " (slaveId " + register.getSlaveId() + ")");
+				this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + MAX_BLACKLIST_POLLING_CYCLES + " cycles are passed, removing from blacklist reg: " + register.getAddress() + " (slaveId " + register.getSlaveId() + ")");
             	
 				it.remove();
-                		continue;
-            		}
+				
+            }else{
 			
-            		this.blacklist.put(register, (Integer)this.blacklist.get(register) - 1);
+            	this.blacklist.put(register, cycles_passed - 1);
+            }
             
 		}
 		
-        	this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + brokenRegisters.size() + " new broken registers");
-        	
-		if (brokenRegisters.size() == 0) {
-            		this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + " no broken registers");
-        	}
-		
-		for (ModbusRegisterInfo register2 : brokenRegisters) {
-		    this.logger.log(LogService.LOG_DEBUG, String.valueOf(logId) + " broken reg: " + register2.getAddress() + " (slaveId " + register2.getSlaveId() + ")");
-		    this.blacklist.put(register2, MAX_BLACKLIST_POLLING_CYCLES);
-		}
+        this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + brokenRegisters.size() + " new broken registers");
+        
+        if (brokenRegisters.size() == 0) {
+            this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + " no broken registers");
+        }
+        for (ModbusRegisterInfo register2 : brokenRegisters) {
+            this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId + " broken reg: " + register2.getAddress() + " (slaveId " + register2.getSlaveId() + ")");
+            this.blacklist.put(register2, MAX_BLACKLIST_POLLING_CYCLES);
+        }
 		
 	}
 
 	private void filterRegisters(Set<ModbusRegisterInfo> registers) {
 		
 		Iterator<ModbusRegisterInfo> it = registers.iterator();
-		
-	        while (it.hasNext()) {
-        	    ModbusRegisterInfo register = it.next();
-	            if (!this.blacklist.containsKey(register)) 
-		    	continue;
-        	    it.remove();
-	        }
+        while (it.hasNext()) {
+            ModbusRegisterInfo register = it.next();
+            if (!this.blacklist.containsKey(register)) continue;
+            it.remove();
+        }
 		
 	}
 
@@ -217,7 +220,7 @@ public class ModbusPoller extends Thread
 		
 		if ((registers != null) && (!registers.isEmpty()))
 		{
-			Boolean read = false;
+			boolean read = false;
 			
 			// get the address of the modbus gateway, which is supposed to be
 			// the same for all registers...
