@@ -220,39 +220,41 @@ public class ModbusGatewayDriver implements Driver
 	{
 		if (this.regDriver != null)
 		{
+			ControllableDevice device = ((ControllableDevice) this.context.getService(reference));
+			
 			// get the corresponding end point set
-			Set<String> gatewayAddressSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> gatewayAddressSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.GATEWAY_ADDRESS);
 			
-			Set<String> gatewayPortSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> gatewayPortSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.GATEWAY_PORT);
 			
-			Set<String> gatewayProtocolSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> gatewayProtocolSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.PROTO_ID);
 			
 			// Get the values for the parameters for the serial port (valid only in case of serial connections
-			Set<String> portNameSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> portNameSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.PORT_NAME);
 			
-			Set<String> baudRateSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> baudRateSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.BAUD_RATE);
 			
-			Set<String> dataBitsSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> dataBitsSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.DATA_BITS);
 			
-			Set<String> paritySet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> paritySet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.PARITY);
 			
-			Set<String> stopBitsSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> stopBitsSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.STOP_BITS);
 			
-			Set<String> encodingSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> encodingSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.ENCODING);
 			
-			Set<String> echoSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> echoSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.ECHO);
 			
-			String deviceId = ((ControllableDevice) this.context.getService(reference)).getDeviceId();
+			String deviceId = device.getDeviceId();
 			
 			SerialParameters serialParameters = new SerialParameters();
 			
@@ -326,6 +328,7 @@ public class ModbusGatewayDriver implements Driver
 				{
 					if (!this.isGatewayAvailable(deviceId))
 					{
+						this.context.ungetService(reference);
 						// create a new instance of the gateway driver
 						ModbusGatewayDriverInstance driver = new ModbusGatewayDriverInstance(this.network.get(),
 								(ControllableDevice) this.context.getService(reference), gatewayAddress, gatewayPort,

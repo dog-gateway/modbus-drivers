@@ -21,7 +21,6 @@ import it.polito.elite.dog.core.library.util.LogHelper;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
-import it.polito.elite.dog.drivers.modbus.network.protocol.SerialMasterConnection;
 
 import java.net.InetAddress;
 import java.util.Collection;
@@ -47,6 +46,7 @@ import net.wimpi.modbus.msg.ModbusRequest;
 import net.wimpi.modbus.msg.ModbusResponse;
 import net.wimpi.modbus.net.MasterConnection;
 import net.wimpi.modbus.net.RTUTCPMasterConnection;
+import net.wimpi.modbus.net.SerialMasterConnection;
 import net.wimpi.modbus.net.TCPMasterConnection;
 import net.wimpi.modbus.net.UDPMasterConnection;
 import net.wimpi.modbus.util.SerialParameters;
@@ -650,19 +650,19 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 			{
 				// debug
 				this.logger.log(LogService.LOG_ERROR, ModbusDriverImpl.logId
-						+ "Error on Modbus I/O communication for register " + register + "\nException: " + e);
+						+ "Error on Modbus I/O communication for register " + register.getAddress() + "\nException: " + e);
 			}
 			catch (ModbusSlaveException e)
 			{
 				// debug
 				this.logger.log(LogService.LOG_ERROR, ModbusDriverImpl.logId + "Error on Modbus Slave, for register "
-						+ register + "\nException: " + e);
+						+ register.getAddress() + "\nException: " + e);
 			}
 			catch (ModbusException e)
 			{
 				// debug
 				this.logger.log(LogService.LOG_ERROR, ModbusDriverImpl.logId
-						+ "Error on Modbus while writing register " + register + "\nException: " + e);
+						+ "Error on Modbus while writing register " + register.getAddress() + "\nException: " + e);
 			}
 		}
 		else
@@ -742,7 +742,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 				this.openConnection(gwAddress, gwPort, gwProtocolVariant);
 				break;
 			case RTU:
-				this.openConnection(gwAddress, gwPort, serialParameters);
+				this.openConnection(gwAddress, gwPort, gwProtocolVariant, serialParameters);
 				break;
 			}
 
@@ -843,7 +843,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 	 * @param gwAddress
 	 * @return
 	 */
-	private void openConnection(final InetAddress gwAddress, final int gwPort, final ModbusProtocolVariant gwProtocol)
+	private void openConnection(final InetAddress gwAddress, final int gwPort, final ModbusProtocolVariant gwProtocol, final SerialParameters serialParameters)
 	{
 		if (!this.connectionPool.containsKey(gwAddress))
 		{
@@ -875,6 +875,12 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 					connection = new UDPMasterConnection(gwAddress);
 					((UDPMasterConnection) connection).setPort(gwPort);
 					
+					break;
+				}
+				case RTU:
+				{
+					// create the ModbusRTU connection
+					connection = new SerialMasterConnection(serialParameters);
 					break;
 				}
 			}
@@ -911,7 +917,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 							@Override
 							public void run()
 							{
-								openConnection(gwAddress, gwPort, gwProtocol);
+								openConnection(gwAddress, gwPort, gwProtocol, serialParameters);
 							}
 						}, this.betweenTrialTimeMillis);
 						
@@ -939,76 +945,17 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 					+ gwProtocol.toString());
 		}
 	}
+	
 	/**
-	 * Opens a RTU master connection
+	 * Utility method for these types of connections TCP, RTU_TCP, RTU_UDP
 	 * 
+	 *  
 	 */
-	private void openConnection(final InetAddress gwAddress, final int gwPort, final SerialParameters serialParameters)
+	private void openConnection(final InetAddress gwAddress, final int gwPort, final ModbusProtocolVariant gwProtocol)
 	{
-		if (!this.connectionPool.containsKey(gwAddress))
-		{
-			// handle the connection type
-			SerialMasterConnection connection = new SerialMasterConnection(serialParameters);
-			
-			// if not null, otherwise the protocol is not supported
-			if (connection != null)
-			{
-				// open the connection
-				try
-				{
-					connection.connect();
-					
-				}
-				catch (Exception e)
-				{
-					// log the connection error
-					this.logger.log(LogService.LOG_ERROR, ModbusDriverImpl.logId
-							+ "Unable to connect to the Modbus TCP Slave with Address: " + gwAddress + "\nException: "
-							+ e);
-					
-					if ((this.trialsDone < this.nConnectionTrials) || (this.nConnectionTrials == 0))
-					{
-						// log a warning
-						this.logger.log(LogService.LOG_WARNING, ModbusDriverImpl.logId
-								+ "Unable to connect to the given Modbus gateway, retrying in "
-								+ this.betweenTrialTimeMillis + " ms");
-						// schedule a new timer to re-call the open function
-						// after
-						// the
-						// given trial timeout...
-						connectionTrialsTimer = new Timer();
-						connectionTrialsTimer.schedule(new TimerTask() {
-							
-							@Override
-							public void run()
-							{
-								openConnection(gwAddress, gwPort, serialParameters);
-							}
-						}, this.betweenTrialTimeMillis);
-						
-						// avoid incrementing the number of trials if the
-						// nConnectionTrials is equal to 0 (i.e. infinite
-						// re-trial)
-						if (this.nConnectionTrials != 0)
-							this.trialsDone++;
-					}
-					else
-					{
-						// log a fatal error
-						this.logger.log(LogService.LOG_ERROR, ModbusDriverImpl.logId
-								+ "Unable to connect to the given Modbus gateway");
-					}
-				}
-				
-				this.connectionPool.put(gwAddress, (MasterConnection) connection);
-			}
-		}
-		else
-		{
-			// log a fatal error
-			this.logger.log(LogService.LOG_INFO, ModbusDriverImpl.logId + "Connection already open");
-		}
+		openConnection(gwAddress, gwPort, gwProtocol, null);
 	}
+	
 	
 	/**
 	 * Closes a TCPMaster connection towards a given gateway and tries to
@@ -1035,11 +982,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 			@Override
 			public void run()
 			{
-				if(gwProtocol.equals(ModbusProtocolVariant.RTU)) {
-					openConnection(gwAddress,gwPort, serialParameters);
-				} else {
-					openConnection(gwAddress, gwPort, gwProtocol);
-				}
+				openConnection(gwAddress,gwPort, gwProtocol, serialParameters);
 			}
 		}, this.betweenTrialTimeMillis);
 	}
