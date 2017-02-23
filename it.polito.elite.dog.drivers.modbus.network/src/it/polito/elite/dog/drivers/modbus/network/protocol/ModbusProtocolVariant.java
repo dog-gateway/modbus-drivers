@@ -28,7 +28,7 @@ package it.polito.elite.dog.drivers.modbus.network.protocol;
 public enum ModbusProtocolVariant
 {
 	TCP,
-	//RTU,
+	RTU,
 	RTU_TCP,
 	RTU_UDP
 }

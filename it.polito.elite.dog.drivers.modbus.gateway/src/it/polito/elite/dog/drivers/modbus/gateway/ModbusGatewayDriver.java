@@ -23,6 +23,7 @@ import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
 import it.polito.elite.dog.core.library.util.LogHelper;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
+import net.wimpi.modbus.util.SerialParameters;
 
 import java.util.Hashtable;
 import java.util.Map;
@@ -52,6 +53,17 @@ import org.osgi.service.log.LogService;
  */
 public class ModbusGatewayDriver implements Driver
 {
+	private static final String DEFAULT_ECHO = "false";
+
+	private static final String DEFAULT_ENCODING = "rtu";
+
+	private static final String DEFAULT_STOP_BITS = "1";
+
+	private static final String DEFAULT_PARITY = "Even";
+
+	private static final String DEFAULT_DATA_BITS = "8";
+
+	private static final String DEFAULT_BAUD_RATE = "115200";
 	// The OSGi framework context
 	protected BundleContext context;
 	
@@ -208,17 +220,43 @@ public class ModbusGatewayDriver implements Driver
 	{
 		if (this.regDriver != null)
 		{
+			ControllableDevice device = ((ControllableDevice) this.context.getService(reference));
+			
 			// get the corresponding end point set
-			Set<String> gatewayAddressSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> gatewayAddressSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.GATEWAY_ADDRESS);
 			
-			Set<String> gatewayPortSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> gatewayPortSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.GATEWAY_PORT);
 			
-			Set<String> gatewayProtocolSet = ((ControllableDevice) this.context.getService(reference))
+			Set<String> gatewayProtocolSet = device
 					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.PROTO_ID);
 			
-			String deviceId = ((ControllableDevice) this.context.getService(reference)).getDeviceId();
+			// Get the values for the parameters for the serial port (valid only in case of serial connections
+			Set<String> portNameSet = device
+					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.PORT_NAME);
+			
+			Set<String> baudRateSet = device
+					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.BAUD_RATE);
+			
+			Set<String> dataBitsSet = device
+					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.DATA_BITS);
+			
+			Set<String> paritySet = device
+					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.PARITY);
+			
+			Set<String> stopBitsSet = device
+					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.STOP_BITS);
+			
+			Set<String> encodingSet = device
+					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.ENCODING);
+			
+			Set<String> echoSet = device
+					.getDeviceDescriptor().getSimpleConfigurationParams().get(ModbusInfo.ECHO);
+			
+			String deviceId = device.getDeviceId();
+			
+			SerialParameters serialParameters = new SerialParameters();
 			
 			// if not null, it is a singleton
 			if (gatewayAddressSet != null)
@@ -236,15 +274,65 @@ public class ModbusGatewayDriver implements Driver
 				if ((gatewayProtocolSet != null) && (!gatewayProtocolSet.isEmpty()))
 					gatewayProtocol = gatewayProtocolSet.iterator().next();
 				
+				// Only if the port name is indicated (for serial port connections) the other serial parameters are verified
+				String portName = "";
+				if ((portNameSet != null) && (!portNameSet.isEmpty())) {
+					portName = portNameSet.iterator().next();
+					serialParameters.setPortName(portName);
+					
+					// get the baud rate if exists
+					String baudRate = DEFAULT_BAUD_RATE;
+					if ((baudRateSet != null) && (!baudRateSet.isEmpty())) {
+						baudRate = baudRateSet.iterator().next();
+					} 
+					serialParameters.setBaudRate(baudRate);
+					
+					// get the data bits if exists
+					String dataBits = DEFAULT_DATA_BITS;
+					if ((dataBitsSet != null) && (!dataBitsSet.isEmpty())) {
+						dataBits = dataBitsSet.iterator().next();
+					} 
+					serialParameters.setDatabits(dataBits);					
+				
+					// get the parity if exists
+					String parity = DEFAULT_PARITY;
+					if ((paritySet != null) && (!paritySet.isEmpty())) {
+						parity = paritySet.iterator().next();
+					} 
+					serialParameters.setParity(parity);					
+
+					// get the stop bits if exists
+					String stopBits = DEFAULT_STOP_BITS;
+					if ((stopBitsSet != null) && (!stopBitsSet.isEmpty())) {
+						stopBits = stopBitsSet.iterator().next();
+					} 
+					serialParameters.setStopbits(stopBits);
+					
+					// get the encoding if exists
+					String encoding = DEFAULT_ENCODING;
+					if ((encodingSet != null) && (!encodingSet.isEmpty())) {
+						encoding = encodingSet.iterator().next();
+					} 
+					serialParameters.setEncoding(encoding);
+					
+					// get the echo if exists
+					String echo = DEFAULT_ECHO;
+					if ((echoSet != null) && (!echoSet.isEmpty())) {
+						echo = echoSet.iterator().next();
+					} 
+					serialParameters.setEcho(Boolean.parseBoolean(echo));
+				}
+				
 				// check not null
 				if ((gatewayAddress != null) && (!gatewayAddress.isEmpty()))
 				{
 					if (!this.isGatewayAvailable(deviceId))
 					{
+						this.context.ungetService(reference);
 						// create a new instance of the gateway driver
 						ModbusGatewayDriverInstance driver = new ModbusGatewayDriverInstance(this.network.get(),
 								(ControllableDevice) this.context.getService(reference), gatewayAddress, gatewayPort,
-								gatewayProtocol, this.context);
+								gatewayProtocol, serialParameters, this.context);
 						
 						synchronized (this.connectedGateways)
 						{
