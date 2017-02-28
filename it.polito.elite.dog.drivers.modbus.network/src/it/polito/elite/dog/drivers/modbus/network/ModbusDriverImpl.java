@@ -208,12 +208,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 			// try to get the baseline polling time
 			String pollingTimeAsString = (String) properties.get("pollingTimeMillis");
 			
-			// trim leading and trailing spaces
-			pollingTimeAsString = pollingTimeAsString.trim();
-			
 			// check not null
 			if (pollingTimeAsString != null)
 			{
+				// trim leading and trailing spaces
+				pollingTimeAsString = pollingTimeAsString.trim();
 				// parse the string
 				this.pollingTimeMillis = Integer.valueOf(pollingTimeAsString);
 			}
@@ -221,24 +220,24 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 			// try to get the baseline polling time
 			String betweenTrialTimeMillisAsString = (String) properties.get("betweenTrialTimeMillis");
 			
-			// trim leading and trailing spaces
-			betweenTrialTimeMillisAsString = betweenTrialTimeMillisAsString.trim();
-			
 			// check not null
 			if (betweenTrialTimeMillisAsString != null)
 			{
+				// trim leading and trailing spaces
+				betweenTrialTimeMillisAsString = betweenTrialTimeMillisAsString.trim();
+				
 				// parse the string
 				this.betweenTrialTimeMillis = Integer.valueOf(betweenTrialTimeMillisAsString);
 			}
 			// try to get the baseline polling time
 			String numTryAsString = (String) properties.get("numTry");
 			
-			// trim leading and trailing spaces
-			numTryAsString = numTryAsString.trim();
-			
 			// check not null
 			if (numTryAsString != null)
 			{
+				// trim leading and trailing spaces
+				numTryAsString = numTryAsString.trim();
+				
 				// parse the string
 				this.nConnectionTrials = Integer.valueOf(numTryAsString);
 			}
@@ -246,17 +245,15 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 			// try to get the maxBlacklistPollingCycles
 			String maxBlacklistPollingCyclesAsString = (String) properties.get("maxBlacklistPollingCycles");
 			
-			// trim maxBlacklistPollingCycles
-			maxBlacklistPollingCyclesAsString = maxBlacklistPollingCyclesAsString.trim();
-			
 			// check not null
 			if (maxBlacklistPollingCyclesAsString != null)
 			{
+				// trim maxBlacklistPollingCycles
+				maxBlacklistPollingCyclesAsString = maxBlacklistPollingCyclesAsString.trim();
 				// parse the string
 				this.maxBlacklistPollingCycles = Integer.valueOf(maxBlacklistPollingCyclesAsString);
 			}
 			
-			// register the service
 			// register the driver service if not already registered
 			if (this.regServiceModbusDriverImpl == null)
 				this.regServiceModbusDriverImpl = this.bundleContext.registerService(ModbusNetwork.class.getName(),
