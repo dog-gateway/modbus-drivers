@@ -27,6 +27,7 @@ import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
+import net.wimpi.modbus.util.SerialParameters;
 
 import java.net.InetAddress;
 import java.util.HashSet;
@@ -62,6 +63,9 @@ public abstract class ModbusDriverInstance implements StatefulDevice
 	// the protocol variant (can be null)
 	protected String gwProtocol;
 	
+	// Serial parameters for the serial connections (null for the other modbus variants)
+	protected SerialParameters serialParameters;
+
 	// the datapoints managed by this driver
 	protected Set<ModbusRegisterInfo> managedRegisters;
 	
@@ -111,6 +115,57 @@ public abstract class ModbusDriverInstance implements StatefulDevice
 		// store the protocol type for the gateway
 		this.gwProtocol = (gatewayProtocol!=null)? gatewayProtocol : ModbusProtocolVariant.TCP.toString();
 		
+		// create the map needed to associate datapoints to notifications
+		this.register2Notification = new ConcurrentHashMap<ModbusRegisterInfo, Set<CNParameters>>();
+		
+		// create the map to associate commands and datapoints
+		this.command2Register = new ConcurrentHashMap<CNParameters, ModbusRegisterInfo>();
+		
+		// create the set for storing the managed datapoints
+		this.managedRegisters = new HashSet<ModbusRegisterInfo>();
+		
+		// fill the data structures depending on the specific device
+		// configuration parameters
+		this.fillConfiguration();
+		
+		// call the specific configuration method, if needed
+		this.specificConfiguration();
+		
+		// associate the device-specific driver to the network driver
+		for (ModbusRegisterInfo register : this.managedRegisters)
+			this.addToNetworkDriver(register);
+	}
+	
+	/**
+	 * The constructor with serial parameters, useful for the serial connections, provides common initialization for all the
+	 * needed data structures, must be called by sub-class constructors
+	 * 
+	 * @param network
+	 *            the network driver to use (as described by the
+	 *            {@link ModbusNetwork} interface.
+	 * @param device
+	 *            the device to which this driver is attached/associated
+	 */
+	public ModbusDriverInstance(ModbusNetwork network, ControllableDevice device, String gatewayAddress, String gatewayPort, String gatewayProtocol, SerialParameters serialParameters)
+	{
+		// store a reference to the network driver
+		this.network = network;
+		
+		// store a reference to the associate device
+		this.device = device;
+		
+		// store the endpoint address for the attached device
+		this.gwAddress = gatewayAddress;
+		
+		// store the port associated to the gateway address
+		this.gwPort = gatewayPort;
+		
+		// store the protocol type for the gateway
+		this.gwProtocol = (gatewayProtocol!=null)? gatewayProtocol : ModbusProtocolVariant.TCP.toString();
+	
+		// store the serial parameters (useful only for serial connections)
+		this.serialParameters = serialParameters;
+				
 		// create the map needed to associate datapoints to notifications
 		this.register2Notification = new ConcurrentHashMap<ModbusRegisterInfo, Set<CNParameters>>();
 		
@@ -212,6 +267,8 @@ public abstract class ModbusDriverInstance implements StatefulDevice
 				//fill the register gateway port
 				register.setGatewayPort(this.gwPort);
 				
+				//fill the register serial parameters (for serial devices)
+				register.setSerialParameters(this.serialParameters);
 				//fill the protocol variant associated to the gateway
 				register.setGatewayProtocol(this.gwProtocol);
 				
@@ -283,6 +340,11 @@ public abstract class ModbusDriverInstance implements StatefulDevice
 				//fill the protocol variant associated to the gateway
 				register.setGatewayProtocol(this.gwProtocol);
 				
+				//for the serial connections, it adds the serial parameters
+				if(this.getGwProtocol().equals(ModbusProtocolVariant.RTU.toString())) {
+					register.setSerialParameters(serialParameters);
+				}
+
 				//fill the slave id
 				register.setSlaveId(Integer.valueOf(registerSlaveId));
 				
@@ -354,5 +416,12 @@ public abstract class ModbusDriverInstance implements StatefulDevice
 	public String getGwProtocol()
 	{
 		return gwProtocol;
+	}	
+	/**
+	 * @return the serialParameters
+	 */
+	public SerialParameters getSerialParameters() 
+	{
+		return serialParameters;
 	}	
 }

@@ -372,7 +372,7 @@ public class ModbusPoller extends Thread
 						ModbusDriverImpl.logId + "Using port: " + gwPort);
 
 				// close and re-open
-				this.driver.closeAndReOpen(gwAddress, gwPort, variant);
+				this.driver.closeAndReOpen(gwAddress, gwPort, variant, mInfo.getSerialParameters());
 			}
 		}
 		
