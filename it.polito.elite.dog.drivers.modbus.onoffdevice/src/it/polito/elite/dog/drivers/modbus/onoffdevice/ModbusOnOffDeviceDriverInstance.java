@@ -17,10 +17,13 @@
  */
 package it.polito.elite.dog.drivers.modbus.onoffdevice;
 
+import org.osgi.framework.BundleContext;
+import org.osgi.service.log.LogService;
+
 import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
 import it.polito.elite.dog.core.library.model.devicecategory.Buzzer;
-import it.polito.elite.dog.core.library.model.devicecategory.ElectricalSystem;
+import it.polito.elite.dog.core.library.model.devicecategory.Controllable;
 import it.polito.elite.dog.core.library.model.devicecategory.Lamp;
 import it.polito.elite.dog.core.library.model.devicecategory.MainsPowerOutlet;
 import it.polito.elite.dog.core.library.model.devicecategory.OnOffOutput;
@@ -33,9 +36,6 @@ import it.polito.elite.dog.core.library.util.LogHelper;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
-
-import org.osgi.framework.BundleContext;
-import org.osgi.service.log.LogService;
 
 /**
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
@@ -256,7 +256,7 @@ public class ModbusOnOffDeviceDriverInstance extends ModbusDriverInstance implem
 	@Override
 	public void updateStatus()
 	{
-		((ElectricalSystem) this.device).updateStatus();
+		((Controllable) this.device).updateStatus();
 	}
 	
 	@Override

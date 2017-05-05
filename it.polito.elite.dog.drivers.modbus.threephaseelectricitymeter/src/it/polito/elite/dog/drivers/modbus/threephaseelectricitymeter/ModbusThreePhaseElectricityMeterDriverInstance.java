@@ -21,7 +21,7 @@ import it.polito.elite.dog.core.library.model.CNParameters;
 import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
 import it.polito.elite.dog.core.library.model.devicecategory.ThreePhaseElectricityMeter;
-import it.polito.elite.dog.core.library.model.notification.FrequencyMeasurementNotification;
+import it.polito.elite.dog.core.library.model.notification.SimpleFrequencyMeasurementNotification;
 import it.polito.elite.dog.core.library.model.notification.SinglePhaseActiveEnergyMeasurementNotification;
 import it.polito.elite.dog.core.library.model.notification.SinglePhaseReactiveEnergyMeasurementNotification;
 import it.polito.elite.dog.core.library.model.notification.ThreePhaseActivePowerMeasurementNotification;
@@ -408,7 +408,7 @@ public class ModbusThreePhaseElectricityMeterDriverInstance extends ModbusDriver
 				{
 					activePowerUOM = register.getXlator().getUnitOfMeasure();
 				}
-				else if (notificationInfo.getName().equalsIgnoreCase(FrequencyMeasurementNotification.notificationName))
+				else if (notificationInfo.getName().equalsIgnoreCase(SimpleFrequencyMeasurementNotification.notificationName))
 				{
 					frequencyUOM = register.getXlator().getUnitOfMeasure();
 				}
