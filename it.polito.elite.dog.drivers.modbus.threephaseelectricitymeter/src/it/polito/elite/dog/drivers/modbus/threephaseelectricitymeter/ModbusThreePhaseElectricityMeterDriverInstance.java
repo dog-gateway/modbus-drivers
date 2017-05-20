@@ -508,7 +508,7 @@ public class ModbusThreePhaseElectricityMeterDriverInstance extends ModbusDriver
 		PowerFactorStateValue powerFactorStateValue = new PowerFactorStateValue();
 		powerFactorStateValue.setValue(DecimalMeasure.valueOf("0 " + Unit.ONE));
 		
-		this.currentState.setState(PowerFactorMeasurementState.class.getCanonicalName(),
+		this.currentState.setState(PowerFactorMeasurementState.class.getSimpleName(),
 				new PowerFactorMeasurementState(powerFactorStateValue));
 		// --------------------------------------------------------------------
 		
