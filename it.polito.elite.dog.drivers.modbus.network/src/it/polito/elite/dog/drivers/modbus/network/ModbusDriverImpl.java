@@ -744,50 +744,53 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		}
 		driverRegisters.add(register);
 
-		// fill the server to register map
-		Set<ModbusRegisterInfo> registers = this.gatewayAddress2Registers.get(gwAddress);
-		if (registers == null)
-		{
-			// create the new entry
-			registers = new HashSet<ModbusRegisterInfo>();
-			this.gatewayAddress2Registers.put(register.getGatewayIPAddress(), registers);
-		}
+		synchronized (this){
 
-		// handle the modbus connection
-		if (!this.connectionPool.containsKey(gwAddress))
-		{
-			// open the modbus connection
-			switch(gwProtocolVariant) {
-			case TCP:
-			case RTU_TCP:
-			case RTU_UDP:
-				this.openConnection(gwAddress, gwPort, gwProtocolVariant);
-				break;
-			case RTU:
-				this.openConnection(gwAddress, gwPort, gwProtocolVariant, serialParameters);
-				break;
+			// fill the server to register map
+			Set<ModbusRegisterInfo> registers = this.gatewayAddress2Registers.get(gwAddress);
+			if (registers == null)
+			{
+				// create the new entry
+				registers = new HashSet<ModbusRegisterInfo>();
+				this.gatewayAddress2Registers.put(register.getGatewayIPAddress(), registers);
 			}
 
+			// handle the modbus connection
+			if (!this.connectionPool.containsKey(gwAddress))
+			{
+				// open the modbus connection
+				switch(gwProtocolVariant) {
+				case TCP:
+				case RTU_TCP:
+				case RTU_UDP:
+					this.openConnection(gwAddress, gwPort, gwProtocolVariant);
+					break;
+				case RTU:
+					this.openConnection(gwAddress, gwPort, gwProtocolVariant, serialParameters);
+					break;
+				}
+
+			}
+
+			// check if a poller is already available or not
+			ModbusPoller poller = this.pollerPool.get(gwAddress);
+
+			// if no poller is currently handling the gateway, then create a new one
+			if (poller == null)
+			{
+				//create a new poller
+				poller = new ModbusPoller(this, gwAddress);
+
+				// add the thread to the poller pool
+				this.pollerPool.put(gwAddress,poller);
+
+				// start polling
+				poller.start();
+			}
+
+			// add the register entry
+			registers.add(register);
 		}
-
-		// check if a poller is already available or not
-		ModbusPoller poller = this.pollerPool.get(gwAddress);
-
-		// if no poller is currently handling the gateway, then create a new one
-		if (poller == null)
-		{
-			//create a new poller
-			poller = new ModbusPoller(this, gwAddress);
-
-			// add the thread to the poller pool
-			this.pollerPool.put(gwAddress,poller);
-
-			// start polling
-			poller.start();
-		}
-
-		// add the register entry
-		registers.add(register);
 	}
 	
 	/*
