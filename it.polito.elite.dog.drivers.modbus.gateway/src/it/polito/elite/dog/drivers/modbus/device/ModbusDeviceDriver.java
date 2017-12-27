@@ -6,7 +6,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.device.Device;
@@ -21,6 +20,7 @@ import it.polito.elite.dog.drivers.modbus.gateway.ModbusGatewayDriver;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
+import net.wimpi.modbus.util.SerialParameters;
 
 public abstract class ModbusDeviceDriver implements Driver
 {
@@ -44,11 +44,6 @@ public abstract class ModbusDeviceDriver implements Driver
 	// bundle registering the service to update the service's properties or to
 	// unregister the service).
 	private ServiceRegistration<?> regDriver;
-
-	// the filter query for listening to framework events relative to the
-	// to the modbus gateway driver
-	String filterQuery = String.format("(%s=%s)", Constants.OBJECTCLASS,
-			ModbusGatewayDriver.class.getName());
 
 	// what are the device categories that can match with this driver?
 	protected Set<String> deviceCategories;
@@ -207,6 +202,8 @@ public abstract class ModbusDeviceDriver implements Driver
 									.getGatewayPort(),
 							this.gateway.get().getSpecificGateway(gateway)
 									.getGwProtocol(),
+							this.gateway.get().getSpecificGateway(gateway)
+									.getSerialParameters(),
 							this.context);
 
 			// connect this driver instance with the device
@@ -218,21 +215,22 @@ public abstract class ModbusDeviceDriver implements Driver
 				this.managedInstances.put(device.getDeviceId(), driverInstance);
 			}
 		}
-		// TODO check if this is needed to ensure the right device usage count on the framework.
-		/*
+		// TODO check if this is needed to ensure the right device usage count
+		// on the framework.
+
 		else
-		{
-			// the device is already attached, unget the service to avoid
+		{ // the device is already attached, unget the service to avoid
 			// leaving "wrong" usage counts on the framework
 			this.context.ungetService(reference);
-		}*/
+		}
+
 		return null;
 	}
 
 	public abstract ModbusDriverInstance createModbusDriverInstance(
 			ModbusNetwork modbusNetwork, ControllableDevice device,
 			String gatewayAddress, String gatewayPort, String gwProtocol,
-			BundleContext context);
+			SerialParameters serialParameters, BundleContext context);
 
 	/**
 	 * Fill a set with all the device categories whose devices can match with
@@ -257,7 +255,7 @@ public abstract class ModbusDeviceDriver implements Driver
 	 */
 	private void registerModbusDeviceDriver()
 	{
-		if ((this.network != null) && (this.gateway != null)
+		if ((this.network.get() != null) && (this.gateway.get() != null)
 				&& (this.context != null) && (this.regDriver == null))
 		{
 			// create a new property object describing this driver

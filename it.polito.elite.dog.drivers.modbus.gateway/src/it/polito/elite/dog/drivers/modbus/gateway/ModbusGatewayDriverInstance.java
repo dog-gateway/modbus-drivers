@@ -41,23 +41,6 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance implements
 	
 	// the log identifier, unique for the class
 	public static String logId = "[ModbusGatewayDriverInstance]: ";
-
-	public ModbusGatewayDriverInstance(ModbusNetwork network, ControllableDevice controllableDevice, String gatewayAddress, String gatewayPort, String protocolVariant,
-			BundleContext context)
-	{
-		super(network, controllableDevice, gatewayAddress, gatewayPort, protocolVariant);
-		
-		// create a logger
-		this.logger = new LogHelper(context);
-		
-		// create a new device state (according to the current DogOnt model, no
-		// state is actually associated to a Modbus gateway)
-		this.currentState = new DeviceStatus(device.getDeviceId());
-		
-		// connect this driver instance with the device
-		this.device.setDriver(this);
-	}
-
 	
 	public ModbusGatewayDriverInstance(ModbusNetwork network, ControllableDevice controllableDevice, String gatewayAddress, String gatewayPort, String protocolVariant, SerialParameters serialParameters,
 			BundleContext context)
@@ -114,7 +97,7 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance implements
 	@Override
 	protected void addToNetworkDriver(ModbusRegisterInfo register)
 	{
-		// TODO Auto-generated method stub
+		this.network.addDriver(register, this);
 		
 	}	
 }

@@ -23,6 +23,7 @@ import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.drivers.modbus.device.ModbusDeviceDriver;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
+import net.wimpi.modbus.util.SerialParameters;
 
 /**
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
@@ -51,10 +52,11 @@ public class ModbusThreePhaseElectricityMeterDriver extends ModbusDeviceDriver
 	public ModbusDriverInstance createModbusDriverInstance(
 			ModbusNetwork modbusNetwork, ControllableDevice device,
 			String gatewayAddress, String gatewayPort, String gwProtocol,
-			BundleContext context)
+			SerialParameters serialParams, BundleContext context)
 	{
 		return new ModbusThreePhaseElectricityMeterDriverInstance(modbusNetwork,
-				device, gatewayAddress, gatewayPort, gwProtocol, context);
+				device, gatewayAddress, gatewayPort, gwProtocol, serialParams,
+				context);
 	}
 
 }

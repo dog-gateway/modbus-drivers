@@ -87,54 +87,7 @@ public abstract class ModbusDriverInstance implements StatefulDevice
 	 * @param string
 	 */
 	public abstract void newMessageFromHouse(ModbusRegisterInfo dataPointInfo, String string);
-	
-	/**
-	 * The base class constructor, provides common initialization for all the
-	 * needed data structures, must be called by sub-class constructors
-	 * 
-	 * @param network
-	 *            the network driver to use (as described by the
-	 *            {@link ModbusNetwork} interface.
-	 * @param device
-	 *            the device to which this driver is attached/associated
-	 */
-	public ModbusDriverInstance(ModbusNetwork network, ControllableDevice device, String gatewayAddress, String gatewayPort, String gatewayProtocol)
-	{
-		// store a reference to the network driver
-		this.network = network;
-		
-		// store a reference to the associate device
-		this.device = device;
-		
-		// store the endpoint address for the attached device
-		this.gwAddress = gatewayAddress;
-		
-		// store the port associated to the gateway address
-		this.gwPort = gatewayPort;
-		
-		// store the protocol type for the gateway
-		this.gwProtocol = (gatewayProtocol!=null)? gatewayProtocol : ModbusProtocolVariant.TCP.toString();
-		
-		// create the map needed to associate datapoints to notifications
-		this.register2Notification = new ConcurrentHashMap<ModbusRegisterInfo, Set<CNParameters>>();
-		
-		// create the map to associate commands and datapoints
-		this.command2Register = new ConcurrentHashMap<CNParameters, ModbusRegisterInfo>();
-		
-		// create the set for storing the managed datapoints
-		this.managedRegisters = new HashSet<ModbusRegisterInfo>();
-		
-		// fill the data structures depending on the specific device
-		// configuration parameters
-		this.fillConfiguration();
-		
-		// call the specific configuration method, if needed
-		this.specificConfiguration();
-		
-		// associate the device-specific driver to the network driver
-		for (ModbusRegisterInfo register : this.managedRegisters)
-			this.addToNetworkDriver(register);
-	}
+
 	
 	/**
 	 * The constructor with serial parameters, useful for the serial connections, provides common initialization for all the
@@ -269,6 +222,7 @@ public abstract class ModbusDriverInstance implements StatefulDevice
 				
 				//fill the register serial parameters (for serial devices)
 				register.setSerialParameters(this.serialParameters);
+				
 				//fill the protocol variant associated to the gateway
 				register.setGatewayProtocol(this.gwProtocol);
 				

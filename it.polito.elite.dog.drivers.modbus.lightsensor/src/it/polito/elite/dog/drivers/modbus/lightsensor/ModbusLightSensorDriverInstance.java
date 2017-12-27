@@ -29,6 +29,7 @@ import it.polito.elite.dog.core.library.util.LogHelper;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
+import net.wimpi.modbus.util.SerialParameters;
 
 import java.lang.reflect.Method;
 import java.util.Set;
@@ -58,9 +59,9 @@ public class ModbusLightSensorDriverInstance extends ModbusDriverInstance implem
 	 * @param context
 	 */
 	public ModbusLightSensorDriverInstance(ModbusNetwork network, ControllableDevice device, String gatewayAddress,
-			String gatewayPort, String gatewayProtocol, BundleContext context)
+			String gatewayPort, String gatewayProtocol, SerialParameters serialParams, BundleContext context)
 	{
-		super(network, device, gatewayAddress, gatewayPort, gatewayProtocol);
+		super(network, device, gatewayAddress, gatewayPort, gatewayProtocol, serialParams);
 		
 		// create a logger
 		this.logger = new LogHelper(context);

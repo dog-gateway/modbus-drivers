@@ -49,30 +49,30 @@ public class ModbusInfo extends ConfigurationConstants
 	public static final Object ECHO = "echo";
 	
 	// the manufacturer identifier (Modbus)
-	public static String MANUFACTURER = "Modbus";	
+	public static final String MANUFACTURER = "Modbus";	
 	
 	// the gateway address
-	public static String GATEWAY_ADDRESS = "IPAddress";
+	public static final String GATEWAY_ADDRESS = "IPAddress";
 	
 	// the gateway port
-	public static String GATEWAY_PORT = "port";
+	public static final String GATEWAY_PORT = "port";
 	
 	// the gateway variant
-	public static String PROTO_ID = "protocolVariant";
+	public static final String PROTO_ID = "protocolVariant";
 	
 	// the register address
-	public static String REGISTER_ADDRESS = "registerAddress";
+	public static final String REGISTER_ADDRESS = "registerAddress";
 	
 	// the register type
-	public static String REGISTER_TYPE = "registerType";
+	public static final String REGISTER_TYPE = "registerType";
 	
 	// the  slave identifier for the register
-	public static String SLAVE_ID = "slaveId";
+	public static final String SLAVE_ID = "slaveId";
 	
 	//the unit of measure associated to the register value
-	public static String REGISTER_UOM = "unitOfMeasure";
+	public static final String REGISTER_UOM = "unitOfMeasure";
 
 	//the scale factor
-	public static String SCALE_FACTOR = "scaleFactor";
+	public static final String SCALE_FACTOR = "scaleFactor";
 	
 }

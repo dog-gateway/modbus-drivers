@@ -17,14 +17,6 @@
  */
 package it.polito.elite.dog.drivers.modbus.gateway;
 
-import it.polito.elite.dog.core.library.model.ControllableDevice;
-import it.polito.elite.dog.core.library.model.DeviceCostants;
-import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
-import it.polito.elite.dog.core.library.util.LogHelper;
-import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
-import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
-import net.wimpi.modbus.util.SerialParameters;
-
 import java.util.Hashtable;
 import java.util.Map;
 import java.util.Set;
@@ -32,12 +24,19 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.osgi.framework.BundleContext;
-import org.osgi.framework.Constants;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.device.Device;
 import org.osgi.service.device.Driver;
 import org.osgi.service.log.LogService;
+
+import it.polito.elite.dog.core.library.model.ControllableDevice;
+import it.polito.elite.dog.core.library.model.DeviceCostants;
+import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
+import it.polito.elite.dog.core.library.util.LogHelper;
+import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
+import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
+import net.wimpi.modbus.util.SerialParameters;
 
 /**
  * A class implementing the functionalities of a generic Modbus gateway, as
@@ -90,9 +89,6 @@ public class ModbusGatewayDriver implements Driver
 	// the set of currently connected gateways... indexed by their ids
 	private Map<String, ModbusGatewayDriverInstance> connectedGateways;
 	
-	// the LDAP query used to match the ModbusNetworkDriver
-	String filterQuery = String.format("(%s=%s)", Constants.OBJECTCLASS, ModbusNetwork.class.getName());
-	
 	public ModbusGatewayDriver()
 	{
 		//initialize the atomic reference to the network
@@ -113,11 +109,11 @@ public class ModbusGatewayDriver implements Driver
 	{
 		// init the logger
 		this.logger = new LogHelper(context);
-		
+		this.logger.log(LogService.LOG_INFO, "Modbus Gateway Driver activated!");
 		// store the context
 		this.context = context;
 		
-		if ((this.network != null) && (this.regDriver == null))
+		if ((this.network.get()!=null) && (this.regDriver == null))
 			this.registerDriver();
 	}
 	

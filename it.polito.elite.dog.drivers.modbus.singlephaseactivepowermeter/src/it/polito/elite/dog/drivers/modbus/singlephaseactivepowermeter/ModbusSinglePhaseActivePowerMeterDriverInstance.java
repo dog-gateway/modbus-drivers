@@ -29,6 +29,7 @@ import it.polito.elite.dog.core.library.util.LogHelper;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
+import net.wimpi.modbus.util.SerialParameters;
 
 import java.lang.reflect.Method;
 import java.util.Set;
@@ -60,9 +61,10 @@ public class ModbusSinglePhaseActivePowerMeterDriverInstance
 	public ModbusSinglePhaseActivePowerMeterDriverInstance(
 			ModbusNetwork network, ControllableDevice device,
 			String gatewayAddress, String gatewayPort, String gatewayProtocol,
-			BundleContext context)
+			SerialParameters serialParams, BundleContext context)
 	{
-		super(network, device, gatewayAddress, gatewayPort, gatewayProtocol);
+		super(network, device, gatewayAddress, gatewayPort, gatewayProtocol,
+				serialParams);
 
 		// create a logger
 		this.logger = new LogHelper(context);
@@ -114,7 +116,8 @@ public class ModbusSinglePhaseActivePowerMeterDriverInstance
 		ActivePowerStateValue pValue = new ActivePowerStateValue();
 		pValue.setValue(powerValue);
 		this.currentState.getState(
-				SinglePhaseActivePowerMeasurementState.class.getSimpleName()).getCurrentStateValue()[0].setValue(powerValue);
+				SinglePhaseActivePowerMeasurementState.class.getSimpleName())
+				.getCurrentStateValue()[0].setValue(powerValue);
 
 		// notify the new measure
 		((SinglePhaseActivePowerMeter) this.device)
@@ -250,7 +253,8 @@ public class ModbusSinglePhaseActivePowerMeterDriverInstance
 		pValue.setValue(DecimalMeasure.valueOf("0 " + activePowerUOM));
 		this.currentState.setState(
 				SinglePhaseActivePowerMeasurementState.class.getSimpleName(),
-				new SinglePhaseActivePowerMeasurementState(new StateValue[]{pValue}));
+				new SinglePhaseActivePowerMeasurementState(
+						new StateValue[] { pValue }));
 
 		// read the initial state
 		this.network.readAll(this.register2Notification.keySet());
