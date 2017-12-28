@@ -56,6 +56,7 @@ public class RegXlatorTypes
 	// TODO: major version change as definitions will no more be backward compatible
 	public static int TYPE_BOOLEAN_COIL = 0;
 	public static int TYPE_2BYTE_INTEGER_INPUT = 1;
+	public static int TYPE_2BYTE_UNSIGNED_INTEGER_INPUT=11;
 	public static int TYPE_2BYTE_INTEGER_HOLDING = 2;
 	public static int TYPE_4BYTE_INTEGER_HOLDING = 4;
 	public static int TYPE_4BYTE_INTEGER_HOLDING_BE = 3;
@@ -75,6 +76,8 @@ public class RegXlatorTypes
 				"Register value translator for coil registers"));
 		types.put(TYPE_2BYTE_INTEGER_INPUT, new RegXlatorType(TYPE_2BYTE_INTEGER_INPUT, RegXlator2ByteIntegerInput.class,
 				"Register value translator for 2 Bytes integer input registers"));
+		types.put(TYPE_2BYTE_UNSIGNED_INTEGER_INPUT, new RegXlatorType(TYPE_2BYTE_UNSIGNED_INTEGER_INPUT, RegXlator2ByteUnsignedIntegerInput.class,
+				"Register value translator for 2 Bytes unsigned integer input registers"));
 		types.put(TYPE_4BYTE_INTEGER_HOLDING, new RegXlatorType(TYPE_4BYTE_INTEGER_HOLDING, RegXlator4ByteIntegerHolding.class,
 				"Register value translator for 4 Bytes little-endian unsigned registers"));
 		types.put(TYPE_4BYTE_INTEGER_HOLDING_BE, new RegXlatorType(TYPE_4BYTE_INTEGER_HOLDING_BE, RegXlator4ByteIntegerHoldingBE.class,

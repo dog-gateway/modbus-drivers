@@ -51,7 +51,7 @@ public class RegXlator2ByteIntegerInput extends RegXlator
 		if ((this.readResponse != null) && (this.readResponse instanceof ReadInputRegistersResponse))
 		{
 			// get the integer value contained in the received readResponse
-			int valueAsInt = ((ReadInputRegistersResponse) this.readResponse).getRegisterValue(0);
+			int valueAsInt = ((ReadInputRegistersResponse) this.readResponse).getRegister(0).toShort();
 			
 			// format and scale the value according to the inner scaling
 			// parameter
