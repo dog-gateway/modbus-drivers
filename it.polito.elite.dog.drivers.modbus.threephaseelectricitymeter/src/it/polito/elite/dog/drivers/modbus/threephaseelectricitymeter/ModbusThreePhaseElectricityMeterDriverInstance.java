@@ -256,7 +256,7 @@ public class ModbusThreePhaseElectricityMeterDriverInstance
 	{
 
 		this.updateThreePhaseStateValue(
-				ThreePhaseVoltageState.class.getSimpleName() + "LL", phaseID,
+				ThreePhaseVoltageState.class.getSimpleName(), phaseID,
 				value);
 
 		((ThreePhaseElectricityMeter) this.device)
@@ -629,9 +629,9 @@ public class ModbusThreePhaseElectricityMeterDriverInstance
 		voltageStateL3N.setFeature("phaseID", "L3");
 		voltageStateL3N.setValue(DecimalMeasure.valueOf("0 " + voltageUOM));
 
-		this.currentState.setState(ThreePhaseVoltageState.class.getSimpleName(),
+		/*this.currentState.setState(ThreePhaseVoltageState.class.getSimpleName(),
 				new ThreePhaseVoltageState(voltageStateL1N, voltageStateL2N,
-						voltageStateL3N));
+						voltageStateL3N));*/
 		// ----------------------------------------------------------
 
 		// ------------------------ ThreePhaseLLVoltage
@@ -648,9 +648,9 @@ public class ModbusThreePhaseElectricityMeterDriverInstance
 		voltageStateL31.setValue(DecimalMeasure.valueOf("0 " + voltageUOM));
 
 		this.currentState.setState(
-				ThreePhaseVoltageState.class.getSimpleName() + "LL",
+				ThreePhaseVoltageState.class.getSimpleName(),
 				new ThreePhaseVoltageState(voltageStateL12, voltageStateL23,
-						voltageStateL31));
+						voltageStateL31, voltageStateL1N, voltageStateL2N, voltageStateL3N));
 
 		// read the initial state
 		//this.network.readAll(this.register2Notification.keySet());
