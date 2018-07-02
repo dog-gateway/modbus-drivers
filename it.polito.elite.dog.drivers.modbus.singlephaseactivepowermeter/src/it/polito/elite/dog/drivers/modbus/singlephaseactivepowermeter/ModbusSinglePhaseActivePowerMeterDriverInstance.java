@@ -20,6 +20,7 @@ package it.polito.elite.dog.drivers.modbus.singlephaseactivepowermeter;
 import it.polito.elite.dog.core.library.model.CNParameters;
 import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
+import it.polito.elite.dog.core.library.model.devicecategory.Controllable;
 import it.polito.elite.dog.core.library.model.devicecategory.SinglePhaseActivePowerMeter;
 import it.polito.elite.dog.core.library.model.notification.SinglePhaseActivePowerMeasurementNotification;
 import it.polito.elite.dog.core.library.model.state.SinglePhaseActivePowerMeasurementState;
@@ -134,7 +135,7 @@ public class ModbusSinglePhaseActivePowerMeterDriverInstance
 	@Override
 	public void updateStatus()
 	{
-		((SinglePhaseActivePowerMeter) this.device).updateStatus();
+		((Controllable) this.device).updateStatus();
 	}
 
 	/*
@@ -257,7 +258,7 @@ public class ModbusSinglePhaseActivePowerMeterDriverInstance
 						new StateValue[] { pValue }));
 
 		// read the initial state
-		this.network.readAll(this.register2Notification.keySet());
+		//this.network.readAll(this.register2Notification.keySet());
 
 	}
 
