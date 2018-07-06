@@ -4,5 +4,5 @@
    <service>
       <provide interface="org.osgi.service.cm.ManagedService"/>
    </service>
-   <property name="service.pid" type="String" value="ModbusNetworkDriver"/>
+   <property name="service.pid" type="String" value="it.polito.elite.dog.drivers.modbus.network"/>
 </scr:component>

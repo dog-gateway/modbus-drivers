@@ -154,7 +154,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		this.logger.log(LogService.LOG_DEBUG,
 				ModbusDriverImpl.logId + "Activated...");
 
-		this.register();
+		//this.register();
 	}
 
 	/**
