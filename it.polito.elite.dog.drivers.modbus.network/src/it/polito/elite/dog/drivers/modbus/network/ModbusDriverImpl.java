@@ -212,7 +212,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 		{
 			// try to get the baseline polling time
 			String pollingTimeAsString = (String) properties
-					.get("pollingTimeMillis");
+					.get(ModbusNetworkConstants.POLLING_TIME_MILLIS);
 
 			// check not null
 			if (pollingTimeAsString != null)
@@ -225,7 +225,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 
 			// try to get the baseline polling time
 			String betweenTrialTimeMillisAsString = (String) properties
-					.get("betweenTrialTimeMillis");
+					.get(ModbusNetworkConstants.RETRY_PERIOD_MILLIS);
 
 			// check not null
 			if (betweenTrialTimeMillisAsString != null)
@@ -239,7 +239,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 						.valueOf(betweenTrialTimeMillisAsString);
 			}
 			// try to get the baseline polling time
-			String numTryAsString = (String) properties.get("numTry");
+			String numTryAsString = (String) properties.get(ModbusNetworkConstants.N_RETRIES);
 
 			// check not null
 			if (numTryAsString != null)
@@ -253,7 +253,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 
 			// try to get the maxBlacklistPollingCycles
 			String maxBlacklistPollingCyclesAsString = (String) properties
-					.get("maxBlacklistPollingCycles");
+					.get(ModbusNetworkConstants.BLACKLIST_CYCLE);
 
 			// check not null
 			if (maxBlacklistPollingCyclesAsString != null)
