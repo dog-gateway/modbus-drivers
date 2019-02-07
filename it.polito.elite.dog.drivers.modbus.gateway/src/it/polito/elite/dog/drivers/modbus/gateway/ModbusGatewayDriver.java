@@ -327,7 +327,7 @@ public class ModbusGatewayDriver implements Driver
 						this.context.ungetService(reference);
 						// create a new instance of the gateway driver
 						ModbusGatewayDriverInstance driver = new ModbusGatewayDriverInstance(this.network.get(),
-								(ControllableDevice) this.context.getService(reference), gatewayAddress, gatewayPort,
+								reference, gatewayAddress, gatewayPort,
 								gatewayProtocol, serialParameters, this.context);
 						
 						synchronized (this.connectedGateways)
