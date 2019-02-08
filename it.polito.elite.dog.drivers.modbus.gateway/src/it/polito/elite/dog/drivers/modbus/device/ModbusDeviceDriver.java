@@ -250,40 +250,34 @@ public abstract class ModbusDeviceDriver implements Driver
     @Override
     public String attach(ServiceReference reference) throws Exception
     {
-        // check if not already attached
-        if (!this.managedInstances.containsKey(
-                (String) reference.getProperty(DeviceCostants.DEVICEURI)))
+        // get the gateway to which the device is connected
+        ModbusGatewayDriverInstance gatewayInstance = this.gateway.get()
+                .getSpecificGateway(
+                        (String) reference.getProperty(DeviceCostants.GATEWAY));
+
+        // store the endpoint address for the attached device
+        String gwAddress = gatewayInstance.getGatewayAddress();
+        // store the port associated to the gateway address
+        String gwPort = gatewayInstance.getGatewayPort();
+        // store the protocol type for the gateway
+        String gwProtocol = gatewayInstance.getGwProtocol();
+        // store the serial parameters specified for the gateway, if any are
+        // available.
+        SerialParameters serialParameters = gatewayInstance
+                .getSerialParameters();
+
+        ModbusDriverInstance driverInstance = this.createModbusDriverInstance(
+                this.network.get(), gwAddress, gwPort, gwProtocol,
+                serialParameters, this.context, reference);
+
+        // store a reference to the connected driver
+        synchronized (this.managedInstances)
         {
-            // get the gateway to which the device is connected
-            ModbusGatewayDriverInstance gatewayInstance = this.gateway.get()
-                    .getSpecificGateway((String) reference
-                            .getProperty(DeviceCostants.GATEWAY));
-
-            // store the endpoint address for the attached device
-            String gwAddress = gatewayInstance.getGatewayAddress();
-            // store the port associated to the gateway address
-            String gwPort = gatewayInstance.getGatewayPort();
-            // store the protocol type for the gateway
-            String gwProtocol = gatewayInstance.getGwProtocol();
-            // store the serial parameters specified for the gateway, if any are
-            // available.
-            SerialParameters serialParameters = gatewayInstance
-                    .getSerialParameters();
-
-            ModbusDriverInstance driverInstance = this
-                    .createModbusDriverInstance(this.network.get(), gwAddress,
-                            gwPort, gwProtocol, serialParameters, this.context,
-                            reference);
-
-            // store a reference to the connected driver
-            synchronized (this.managedInstances)
-            {
-                this.managedInstances.put(
-                        (String) reference
-                                .getProperty(DeviceCostants.DEVICEURI),
-                        driverInstance);
-            }
+            this.managedInstances.put(
+                    (String) reference.getProperty(DeviceCostants.DEVICEURI),
+                    driverInstance);
         }
+
         return null;
     }
 

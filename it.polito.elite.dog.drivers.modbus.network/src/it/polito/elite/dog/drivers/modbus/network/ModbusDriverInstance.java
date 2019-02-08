@@ -211,7 +211,7 @@ public abstract class ModbusDriverInstance extends
     @Override
     public void removedService(ServiceReference<Device> reference,
             ControllableDevice service)
-    {
+    {       
         // perform de-registration from the network driver
         this.network.removeDriver(this);
 

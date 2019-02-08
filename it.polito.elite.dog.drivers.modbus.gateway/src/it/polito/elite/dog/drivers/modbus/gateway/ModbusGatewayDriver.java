@@ -273,33 +273,29 @@ public class ModbusGatewayDriver implements Driver
             if ((deviceInfo.getIpAddress() != null)
                     && (!deviceInfo.getIpAddress().isEmpty()))
             {
-                if (!this.isGatewayAvailable(deviceId))
+
+                // create a new instance of the gateway driver
+                ModbusGatewayDriverInstance driver = new ModbusGatewayDriverInstance(
+                        this.network.get(), reference,
+                        deviceInfo.getIpAddress(), deviceInfo.getTcpPort(),
+                        deviceInfo.getProtocolVariant(),
+                        deviceInfo.getSerialParameters(), this.context);
+
+                synchronized (this.connectedGateways)
                 {
-
-                    // create a new instance of the gateway driver
-                    ModbusGatewayDriverInstance driver = new ModbusGatewayDriverInstance(
-                            this.network.get(), reference,
-                            deviceInfo.getIpAddress(), deviceInfo.getTcpPort(),
-                            deviceInfo.getProtocolVariant(),
-                            deviceInfo.getSerialParameters(), this.context);
-
-                    synchronized (this.connectedGateways)
-                    {
-                        // store a reference to the gateway driver
-                        this.connectedGateways.put(deviceId, driver);
-                    }
-
-                    // modify the service description causing a forcing the
-                    // framework to send a modified service notification
-                    final Hashtable<String, Object> propDriver = new Hashtable<String, Object>();
-                    propDriver.put(DeviceCostants.DRIVER_ID,
-                            "Modbus_ModbusGateway_driver");
-                    propDriver.put(DeviceCostants.GATEWAY_COUNT,
-                            this.connectedGateways.size());
-
-                    this.regDriver.setProperties(propDriver);
-
+                    // store a reference to the gateway driver
+                    this.connectedGateways.put(deviceId, driver);
                 }
+
+                // modify the service description causing a forcing the
+                // framework to send a modified service notification
+                final Hashtable<String, Object> propDriver = new Hashtable<String, Object>();
+                propDriver.put(DeviceCostants.DRIVER_ID,
+                        "Modbus_ModbusGateway_driver");
+                propDriver.put(DeviceCostants.GATEWAY_COUNT,
+                        this.connectedGateways.size());
+
+                this.regDriver.setProperties(propDriver);
 
             }
             else
