@@ -20,7 +20,6 @@ package it.polito.elite.dog.drivers.modbus.gateway;
 import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
 import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
-import it.polito.elite.dog.core.library.util.LogHelper;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
@@ -29,7 +28,8 @@ import net.wimpi.modbus.util.SerialParameters;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.device.Device;
-import org.osgi.service.log.LogService;
+import org.osgi.service.log.Logger;
+import org.osgi.service.log.LoggerFactory;
 
 /**
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
@@ -40,7 +40,7 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
         implements ModbusGateway
 {
     // the driver logger
-    LogHelper logger;
+    Logger logger;
 
     // the log identifier, unique for the class
     public static String logId = "[ModbusGatewayDriverInstance]: ";
@@ -54,10 +54,10 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
                 serialParameters, context, controllableDevice);
 
         // create a logger
-        this.logger = new LogHelper(context);
+        this.logger = context
+                .getService(context.getServiceReference(LoggerFactory.class))
+                .getLogger(ModbusGatewayDriverInstance.class);
 
-        // connect this driver instance with the device
-        // this.device.setDriver(this);
     }
 
     @Override
@@ -77,8 +77,7 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
         // house messages...
 
         // just log
-        this.logger.log(LogService.LOG_INFO, ModbusGatewayDriverInstance.logId
-                + "Received new message from house involving the register:\n "
+        this.logger.info("Received new message from house involving the register:\n "
                 + registerInfo + "\n No operation is currently supported");
 
     }
@@ -112,6 +111,5 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
         // create a new device state (according to the current DogOnt model, no
         // state is actually associated to a Modbus gateway)
         this.currentState = new DeviceStatus(device.getDeviceId());
-
     }
 }
