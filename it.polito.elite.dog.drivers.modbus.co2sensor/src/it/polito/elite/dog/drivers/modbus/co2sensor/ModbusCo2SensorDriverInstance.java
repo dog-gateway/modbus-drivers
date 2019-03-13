@@ -246,9 +246,6 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance
         pValue.setValue(DecimalMeasure.valueOf("0 " + Co2UOM));
         this.currentState.setState(Co2MeasurementState.class.getSimpleName(),
                 new Co2MeasurementState(pValue));
-
-        // read the initial state
-        this.network.readAll(this.register2Notification.keySet());
     }
 
     @Override

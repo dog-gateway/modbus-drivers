@@ -17,8 +17,6 @@
  */
 package it.polito.elite.dog.drivers.modbus.network.interfaces;
 
-import java.util.Set;
-
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 
@@ -39,13 +37,6 @@ public interface ModbusNetwork
 	 *            the register unique identifier.
 	 */
 	public void read(ModbusRegisterInfo register);
-	
-	/**
-	 * Read the current value of all the registers included in the given set
-	 * 
-	 * @param registers The {@link Set}<{@link ModbusRegisterInfo}> of register to read.
-	 */
-	public void readAll(Set<ModbusRegisterInfo> registers);
 	
 	/**
 	 * Writes a given command to a given Modbus register

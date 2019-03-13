@@ -17,8 +17,6 @@
  */
 package it.polito.elite.dog.drivers.modbus.network.regxlators;
 
-import org.osgi.service.log.LogService;
-
 /**
  * A class for representing/describing a RegXlatorClass...
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
@@ -110,8 +108,7 @@ public class RegXlatorType
 		}
 		catch (Exception e)
 		{
-			RegXlator.logger.log(LogService.LOG_ERROR, RegXlatorType.logId
-					+ "Unable to create the required RegXlator instance\n" + e);
+			RegXlator.logger.error("Unable to create the required RegXlator instance\n" + e);
 			
 		}
 		

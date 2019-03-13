@@ -247,9 +247,6 @@ public class ModbusPressureSensorDriverInstance extends ModbusDriverInstance
         pValue.setValue(DecimalMeasure.valueOf("0 " + pressureUOM));
         this.currentState.setState(PressureState.class.getSimpleName(),
                 new PressureState(pValue));
-
-        // read the initial state
-        this.network.readAll(this.register2Notification.keySet());
     }
 
     @Override

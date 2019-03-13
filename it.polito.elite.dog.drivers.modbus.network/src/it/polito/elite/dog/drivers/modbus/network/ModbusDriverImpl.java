@@ -1,7 +1,7 @@
 /*
  * Dog - Network Driver
  * 
- * Copyright (c) 2012-2013 Dario Bonino, Claudio Degioanni
+ * Copyright (c) 2012-2019 Dario Bonino, Claudio Degioanni, Claudio Ventrella
  * 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,21 +17,9 @@
  */
 package it.polito.elite.dog.drivers.modbus.network;
 
-import it.polito.elite.dog.core.library.util.LogHelper;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
-
-import java.net.InetAddress;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Dictionary;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.concurrent.ConcurrentHashMap;
 
 import net.wimpi.modbus.Modbus;
 import net.wimpi.modbus.ModbusException;
@@ -55,7 +43,20 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceRegistration;
 import org.osgi.service.cm.ConfigurationException;
 import org.osgi.service.cm.ManagedService;
-import org.osgi.service.log.LogService;
+import org.osgi.service.log.Logger;
+import org.osgi.service.log.LoggerFactory;
+
+import java.net.InetAddress;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Dictionary;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * The network driver for devices based on the Modbus TCP protocol
@@ -66,55 +67,100 @@ import org.osgi.service.log.LogService;
  * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  * 
  * @since Jan 18, 2012
+ * @version 1.2
  */
 public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 {
+    // the default polling time, to be moved to the configuration class
+    public static final int DEFAULT_POLLING_TIME_MILLIS = 5000;
+    // the default number of reconnection trials
+    public static final int DEFAULT_N_RECONNECTION_ATTEMPTS = 0;
+    // the default interval between two subsequent re-connection attempts
+    public static final int DEFAULT_RECONNECTION_INTERVAL_MILLIS = 3000;
+    // the default blacklist duration (in polling cycles)
+    public static final int DEFAULT_BLACKLIST_DURATION = 80;
+
     // the bundle context
     private BundleContext bundleContext;
-
     // the service registration handle
     private ServiceRegistration<?> regServiceModbusDriverImpl;
-
+    // the reference to the LoggerFactory
+    private AtomicReference<LoggerFactory> loggerFactory;
     // the driver logger
-    private LogHelper logger;
-
-    // the log identifier, unique for the class
-    public static String logId = "[ModbusDriverImpl]: ";
-
+    private Logger logger;
     // the register to driver map
+    // TODO: extend to allow multiple driver per register
     private Map<ModbusRegisterInfo, ModbusDriverInstance> register2Driver;
-
     // the inverse map
     private Map<ModbusDriverInstance, Set<ModbusRegisterInfo>> driver2Register;
-
-    // the modbus server-to-register association for polling
-    private Map<InetAddress, Set<ModbusRegisterInfo>> gatewayAddress2Registers;
-
+    // the modbus network-level-gateway-to-register association for polling
+    private Map<String, Set<ModbusRegisterInfo>> gatewayAddress2Registers;
     // the baseline pollingTime adopted if no server-specific setting is given
-    private int pollingTimeMillis = 5000; // default value
-
+    private int pollingTimeMillis;
     // the number of connection trials
-    private int nConnectionTrials = 0;
+    private int nConnectionTrials;
     private int trialsDone;
-
     // the time that must occur between two subsequent trials
-    private int betweenTrialTimeMillis = 3000;
-
+    private int betweenTrialTimeMillis;
     // a reference to the connection trials timer
     private Timer connectionTrialsTimer;
-
     // number of cycles that a broken register will be in the blacklist
-    private int maxBlacklistPollingCycles = 80;
-
-    // the modbus poller
-    private Map<InetAddress, ModbusPoller> pollerPool;
-
+    private int maxBlacklistPollingCycles;
+    // the set of modbus poller, one per each gateway.
+    private Map<String, ModbusPoller> pollerPool;
     // the modbus connection pool
-    private Map<InetAddress, MasterConnection> connectionPool;
+    private Map<String, MasterConnection> connectionPool;
 
+    /**
+     * Class constructor, initializes base data structures.
+     */
     public ModbusDriverImpl()
     {
-        // empty wait for a call to the activate method
+        // -- initialize atomic references
+        this.loggerFactory = new AtomicReference<LoggerFactory>();
+
+        // -- initialize defaults
+        // the polling time
+        this.pollingTimeMillis = ModbusDriverImpl.DEFAULT_POLLING_TIME_MILLIS;
+        // the number of connection trials
+        this.nConnectionTrials = ModbusDriverImpl.DEFAULT_N_RECONNECTION_ATTEMPTS;
+        // the time that must occur between two subsequent trials
+        this.betweenTrialTimeMillis = ModbusDriverImpl.DEFAULT_RECONNECTION_INTERVAL_MILLIS;
+        // number of cycles that a broken register will be in the blacklist
+        this.maxBlacklistPollingCycles = ModbusDriverImpl.DEFAULT_BLACKLIST_DURATION;
+    }
+
+    /**
+     * Sets the reference to a {@link LoggerFactory} service available in the
+     * OSGi framework.
+     * 
+     * @param loggerFactory
+     *            The available {@link LoggerFactory} service.
+     */
+    public void setLoggerFactory(LoggerFactory loggerFactory)
+    {
+        // store the reference
+        this.loggerFactory.set(loggerFactory);
+        // create the class logger
+        this.logger = this.loggerFactory.get()
+                .getLogger(ModbusDriverImpl.class);
+    }
+
+    /**
+     * Removes a reference to a {@link LoggerFactory} service, which is no more
+     * available in the framework.
+     * 
+     * @param loggerFactory
+     *            The {@link LoggerFactory} service that became unavailable.
+     */
+    public void unsetLoggerFactory(LoggerFactory loggerFactory)
+    {
+        // remove the reference
+        if (this.loggerFactory.compareAndSet(loggerFactory, null))
+        {
+            // remove the logger
+            this.logger = null;
+        }
     }
 
     /**
@@ -125,14 +171,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      */
     public void activate(BundleContext bundleContext)
     {
-        // create a logger
-        this.logger = new LogHelper(bundleContext);
+        // store the bundle context
+        this.bundleContext = bundleContext;
 
         // set the number of done trials to 0
         this.trialsDone = 0;
-
-        // store the bundle context
-        this.bundleContext = bundleContext;
 
         // create the register to driver map
         this.register2Driver = new ConcurrentHashMap<ModbusRegisterInfo, ModbusDriverInstance>();
@@ -141,20 +184,16 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         this.driver2Register = new ConcurrentHashMap<ModbusDriverInstance, Set<ModbusRegisterInfo>>();
 
         // create the gateway address to register map
-        this.gatewayAddress2Registers = new ConcurrentHashMap<InetAddress, Set<ModbusRegisterInfo>>();
+        this.gatewayAddress2Registers = new ConcurrentHashMap<String, Set<ModbusRegisterInfo>>();
 
         // create the connection pool (one per gateway address)
-        this.connectionPool = new ConcurrentHashMap<InetAddress, MasterConnection>();
+        this.connectionPool = new ConcurrentHashMap<String, MasterConnection>();
 
-        // empty wait for a call to the activate method (concurrent set
-        // implementation)
-        this.pollerPool = new ConcurrentHashMap<InetAddress, ModbusPoller>();
+        // create the pool of modbus pollers.
+        this.pollerPool = new ConcurrentHashMap<String, ModbusPoller>();
 
         // log the activation
-        this.logger.log(LogService.LOG_DEBUG,
-                ModbusDriverImpl.logId + "Activated...");
-
-        // this.register();
+        this.logger.info("Activated...");
     }
 
     /**
@@ -163,8 +202,15 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     public void deactivate()
     {
         // log
-        this.logger.log(LogService.LOG_INFO,
-                ModbusDriverImpl.logId + "Deactivated...");
+        this.logger.info("Deactivating...");
+
+        // stop the modbus pollers
+        this.stopPollers();
+
+        // delete the poller pool (unRegister already stops poller threads)
+        this.pollerPool = null;
+
+        // unregister the driver services
         this.unRegister();
 
         // store the bundle context
@@ -179,23 +225,20 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         // delete the gateway address to register map
         this.gatewayAddress2Registers = null;
 
-        // delete the poller pool (unRegister already stops poller threads)
-        this.pollerPool = null;
-
         // close connections
-        Collection<MasterConnection> connections = this.connectionPool.values();
-
-        if (connections != null)
+        if (this.connectionPool != null)
         {
-            for (MasterConnection connection : connections)
-            {
-                if (connection.isConnected())
-                    connection.close();
-            }
+            // close all connections
+            this.closeConnections();
+            // delete the connection pool (one per gateway address)
+            this.connectionPool = null;
         }
+    }
 
-        // delete the connection pool (one per gateway address)
-        this.connectionPool = null;
+    public void modified(BundleContext context)
+    {
+        // Intentionally left empty, used just to avoid bundle deactivation on
+        // update.
     }
 
     /*
@@ -284,14 +327,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     /**
      * Unregisters the driver from the OSGi framework
      */
-    public void unRegister()
+    private void unRegister()
     {
-        // stop all the poller threads
-        for (ModbusPoller poller : this.pollerPool.values())
-        {
-            poller.setRunnable(false);
-        }
-
         // unregister
         if (this.regServiceModbusDriverImpl != null)
         {
@@ -302,14 +339,43 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     }
 
     /**
-     * Provides a reference to the {@link LogService} instance used by this
-     * class to log messages...
-     * 
-     * @return
+     * Stop all modbus pollers.
      */
-    public LogHelper getLogger()
+    private void stopPollers()
     {
-        return this.logger;
+        // stop all the poller threads
+        for (ModbusPoller poller : this.pollerPool.values())
+        {
+            poller.setRunnable(false);
+        }
+    }
+
+    /**
+     * Close all connections
+     */
+    private void closeConnections()
+    {
+        Collection<MasterConnection> connections = this.connectionPool.values();
+
+        if (connections != null)
+        {
+            for (MasterConnection connection : connections)
+            {
+                if (connection.isConnected())
+                    connection.close();
+            }
+        }
+
+    }
+
+    /**
+     * Get a reference to the LoggerFactory.
+     * 
+     * @return the {@link LoggerFactory} currently bound to this service.
+     */
+    public LoggerFactory getLoggerFactory()
+    {
+        return this.loggerFactory.get();
     }
 
     /**
@@ -318,7 +384,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * 
      * @return
      */
-    public Set<InetAddress> getConnectedGateways()
+    public Set<String> getConnectedGateways()
     {
         return this.gatewayAddress2Registers.keySet();
     }
@@ -332,7 +398,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * @return
      */
     public synchronized Set<ModbusRegisterInfo> getGatewayRegisters(
-            InetAddress gwAddress)
+            String gwIdentifier)
     {
         Set<ModbusRegisterInfo> currentSnapshot = Collections
                 .synchronizedSet(new HashSet<ModbusRegisterInfo>());
@@ -342,7 +408,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         synchronized (this)
         {
             Set<ModbusRegisterInfo> allRegisterInfos = this.gatewayAddress2Registers
-                    .get(gwAddress);
+                    .get(gwIdentifier);
             if (allRegisterInfos != null)
             {
                 for (ModbusRegisterInfo r : allRegisterInfos)
@@ -384,7 +450,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     /**
      * @return the gatewayAddress2Registers
      */
-    public Map<InetAddress, Set<ModbusRegisterInfo>> getGatewayAddress2Registers()
+    public Map<String, Set<ModbusRegisterInfo>> getGatewayAddress2Registers()
     {
         return gatewayAddress2Registers;
     }
@@ -392,7 +458,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     /**
      * @return the connectionPool
      */
-    public Map<InetAddress, MasterConnection> getConnectionPool()
+    public Map<String, MasterConnection> getConnectionPool()
     {
         return connectionPool;
     }
@@ -425,7 +491,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         // prepare the TCP connection to the gateway offering access to the
         // given register
         MasterConnection modbusConnection = this.connectionPool
-                .get(register.getGatewayIPAddress());
+                .get(register.getGatewayIdentifier());
 
         // get the gateway port
         String gwPortAsString = register.getGatewayPort();
@@ -444,14 +510,12 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         }
 
         // parse the protocol variant
-        ModbusProtocolVariant variant = ModbusProtocolVariant
-                .valueOf(register.getGatewayProtocol());
+        ModbusProtocolVariant variant = register.getGatewayProtocol();
 
         if (modbusConnection.isConnected())
         {
             // successfully connected
-            this.logger.log(LogService.LOG_DEBUG, ModbusDriverImpl.logId
-                    + "Successfully connected to the Modbus TCP Slave");
+            this.logger.debug("Successfully connected to the Modbus TCP Slave");
 
             // prepare the read request using the register translator for
             // composing the right Modbus request...
@@ -473,25 +537,21 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             catch (ModbusIOException e)
             {
                 // debug
-                this.logger.log(LogService.LOG_ERROR, ModbusDriverImpl.logId
-                        + "Error on Modbus I/O communication for register "
-                        + register + "\nException: " + e);
+                this.logger
+                        .error("Error on Modbus I/O communication for register "
+                                + register + "\nException: " + e);
             }
             catch (ModbusSlaveException e)
             {
                 // debug
-                this.logger.log(LogService.LOG_ERROR,
-                        ModbusDriverImpl.logId
-                                + "Error on Modbus Slave, for register "
-                                + register + "\nException: " + e);
+                this.logger.error("Error on Modbus Slave, for register "
+                        + register + "\nException: " + e);
             }
             catch (ModbusException e)
             {
                 // debug
-                this.logger.log(LogService.LOG_ERROR,
-                        ModbusDriverImpl.logId
-                                + "Error on Modbus while reading register "
-                                + register + "\nException: " + e);
+                this.logger.error("Error on Modbus while reading register "
+                        + register + "\nException: " + e);
             }
 
             // get the readResponse
@@ -499,14 +559,13 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 
             // debug
             String responseAsString = response.getHexMessage();
-            this.logger.log(LogService.LOG_DEBUG,
-                    ModbusDriverImpl.logId + "Received -> " + responseAsString);
+            this.logger.debug("Received -> " + responseAsString);
 
             // translate the readResponse
             register.getXlator().setReadResponse(response);
 
-            this.logger.log(LogService.LOG_DEBUG, ModbusDriverImpl.logId
-                    + "Translated into -> " + register.getXlator().getValue());
+            this.logger.debug(
+                    "Translated into -> " + register.getXlator().getValue());
 
             // dispatch the new message...
             ModbusDriverInstance driver = this.register2Driver.get(register);
@@ -516,159 +575,13 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         else
         {
             // info on port usage
-            this.logger.log(LogService.LOG_INFO,
-                    ModbusDriverImpl.logId + "Using port: " + gwPort);
+            this.logger.info("Using port: " + gwPort);
 
             // close and re-open
-            this.closeAndReOpen(register.getGatewayIPAddress(), gwPort, variant,
+            this.closeAndReOpen(register.getGatewayIdentifier(),
+                    register.getGatewayIPAddress(), gwPort, variant,
                     register.getSerialParameters());
         }
-    }
-
-    /*
-     * (non-Javadoc)
-     * 
-     * @see it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork
-     * # readAll(java.util.Set<it.polito.elite.dog.drivers.modbus.network. info
-     * . ModbusRegisterInfo>)
-     */
-    @Override
-    public void readAll(final Set<ModbusRegisterInfo> registers)
-    {
-        if ((registers != null) && (!registers.isEmpty()))
-        {
-            // get the address of the modbus gateway, which is supposed to be
-            // the same for all registers...
-            ModbusRegisterInfo mInfo = registers.iterator().next();
-            InetAddress gwAddress = mInfo.getGatewayIPAddress();
-
-            // get the gateway port
-            String gwPortAsString = mInfo.getGatewayPort();
-
-            // handle the port using defaults
-            int gwPort = Modbus.DEFAULT_PORT;
-
-            try
-            {
-                gwPort = Integer.valueOf(gwPortAsString);
-            }
-            catch (NumberFormatException e)
-            {
-                // reset to the default
-                gwPort = Modbus.DEFAULT_PORT;
-            }
-
-            // parse the protocol variant
-            ModbusProtocolVariant variant = ModbusProtocolVariant
-                    .valueOf(mInfo.getGatewayProtocol());
-
-            // prepare the TCP connection to the gateway offering access to the
-            // given register
-            MasterConnection modbusConnection = this.connectionPool
-                    .get(gwAddress);
-
-            if (modbusConnection.isConnected())
-            {
-                // successfully connected
-                this.logger.log(LogService.LOG_DEBUG, ModbusDriverImpl.logId
-                        + "Successfully connected to the Modbus TCP Slave");
-                synchronized (registers)
-                {
-                    for (ModbusRegisterInfo register : registers)
-                    {
-                        // prepare the read request using the register
-                        // translator
-                        // for composing the right Modbus request...
-                        ModbusRequest readRequest = register.getXlator()
-                                .getReadRequest(register.getAddress());
-
-                        // set the slave id associated to the given register
-                        readRequest.setUnitID(register.getSlaveId());
-
-                        // create a modbus tcp transaction for the just created
-                        // readRequest
-                        ModbusTransaction transaction = this.getTransaction(
-                                readRequest, modbusConnection, variant);
-
-                        // try to execute the transaction and manage possible
-                        // errors...
-                        try
-                        {
-                            transaction.execute();
-
-                            // get the readResponse
-                            ModbusResponse response = transaction.getResponse();
-
-                            // debug
-                            String responseAsString = response.getHexMessage();
-                            this.logger.log(LogService.LOG_DEBUG,
-                                    ModbusDriverImpl.logId + "Received -> "
-                                            + responseAsString);
-
-                            // translate the readResponse
-                            register.getXlator().setReadResponse(response);
-
-                            this.logger.log(LogService.LOG_DEBUG,
-                                    ModbusDriverImpl.logId
-                                            + "Translated into -> "
-                                            + register.getXlator().getValue());
-
-                            // dispatch the new message...
-                            ModbusDriverInstance driver = this.register2Driver
-                                    .get(register);
-                            driver.newMessageFromHouse(register,
-                                    register.getXlator().getValue());
-                        }
-                        catch (ModbusIOException e)
-                        {
-                            // debug
-                            this.logger.log(LogService.LOG_ERROR,
-                                    ModbusDriverImpl.logId
-                                            + "Error on Modbus I/O communication for register "
-                                            + register + "\nException: " + e);
-
-                            // close the connection
-                            modbusConnection.close();
-                        }
-                        catch (ModbusSlaveException e)
-                        {
-                            // debug
-                            this.logger.log(LogService.LOG_ERROR,
-                                    ModbusDriverImpl.logId
-                                            + "Error on Modbus Slave, for register "
-                                            + register + "\nException: " + e);
-                            // close the connection
-                            modbusConnection.close();
-                        }
-                        catch (ModbusException e)
-                        {
-                            // debug
-                            this.logger.log(LogService.LOG_ERROR,
-                                    ModbusDriverImpl.logId
-                                            + "Error on Modbus while reading register "
-                                            + register + "\nException: " + e);
-                            // close the connection
-                            modbusConnection.close();
-                        }
-
-                        // stop this polling cycle if the connection is closed
-                        if (!modbusConnection.isConnected())
-                            break;
-                    }
-                }
-            }
-            else
-            {
-                // info on port usage
-                this.logger.log(LogService.LOG_INFO,
-                        ModbusDriverImpl.logId + "Using port: " + gwPort);
-
-                // close and re-open
-                this.closeAndReOpen(gwAddress, gwPort, variant,
-                        mInfo.getSerialParameters());
-            }
-        }
-
     }
 
     /*
@@ -684,7 +597,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         // prepare the TCP connection to the gateway offering access to the
         // given register
         MasterConnection modbusConnection = this.connectionPool
-                .get(register.getGatewayIPAddress());
+                .get(register.getGatewayIdentifier());
 
         // get the gateway port
         String gwPortAsString = register.getGatewayPort();
@@ -703,14 +616,12 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         }
 
         // parse the protocol variant
-        ModbusProtocolVariant variant = ModbusProtocolVariant
-                .valueOf(register.getGatewayProtocol());
+        ModbusProtocolVariant variant = register.getGatewayProtocol();
 
         if (modbusConnection.isConnected())
         {
             // successfully connected
-            this.logger.log(LogService.LOG_DEBUG, ModbusDriverImpl.logId
-                    + "Successfully connected to the Modbus TCP Slave");
+            this.logger.debug("Successfully connected to the Modbus TCP Slave");
 
             ModbusRequest writeRequest = register.getXlator()
                     .getWriteRequest(register.getAddress(), commandValue);
@@ -729,36 +640,32 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             catch (ModbusIOException e)
             {
                 // debug
-                this.logger.log(LogService.LOG_ERROR, ModbusDriverImpl.logId
-                        + "Error on Modbus I/O communication for register "
-                        + register.getAddress() + "\nException: " + e);
+                this.logger
+                        .error("Error on Modbus I/O communication for register "
+                                + register.getAddress() + "\nException: " + e);
             }
             catch (ModbusSlaveException e)
             {
                 // debug
-                this.logger.log(LogService.LOG_ERROR,
-                        ModbusDriverImpl.logId
-                                + "Error on Modbus Slave, for register "
-                                + register.getAddress() + "\nException: " + e);
+                this.logger.error("Error on Modbus Slave, for register "
+                        + register.getAddress() + "\nException: " + e);
             }
             catch (ModbusException e)
             {
                 // debug
-                this.logger.log(LogService.LOG_ERROR,
-                        ModbusDriverImpl.logId
-                                + "Error on Modbus while writing register "
-                                + register.getAddress() + "\nException: " + e);
+                this.logger.error("Error on Modbus while writing register "
+                        + register.getAddress() + "\nException: " + e);
             }
         }
         else
         {
 
             // info on port usage
-            this.logger.log(LogService.LOG_INFO,
-                    ModbusDriverImpl.logId + "Using port: " + gwPort);
+            this.logger.info("Using port: " + gwPort);
 
             // close and re-open
-            this.closeAndReOpen(register.getGatewayIPAddress(), gwPort, variant,
+            this.closeAndReOpen(register.getGatewayIdentifier(),
+                    register.getGatewayIPAddress(), gwPort, variant,
                     register.getSerialParameters());
         }
     }
@@ -772,16 +679,19 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance)
      */
     @Override
-    public void addDriver(ModbusRegisterInfo register,
+    public synchronized void addDriver(ModbusRegisterInfo register,
             ModbusDriverInstance driver)
     {
         // get the register gateway address
         InetAddress gwAddress = register.getGatewayIPAddress();
-        String gwPortAsString = register.getGatewayPort();
-        SerialParameters serialParameters = register.getSerialParameters();
-        ModbusProtocolVariant gwProtocolVariant = ModbusProtocolVariant
-                .valueOf(register.getGatewayProtocol());
 
+        // get the register serial parameters
+        SerialParameters serialParameters = register.getSerialParameters();
+        // get the register protocol variant
+        ModbusProtocolVariant gwProtocolVariant = register.getGatewayProtocol();
+
+        // get the register gateway port
+        String gwPortAsString = register.getGatewayPort();
         int gwPort = Modbus.DEFAULT_PORT;
         try
         {
@@ -794,8 +704,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         }
 
         // info on port usage
-        this.logger.log(LogService.LOG_INFO,
-                ModbusDriverImpl.logId + "Using port: " + gwPort);
+        this.logger.info("Adding register {} on gateway {}.",
+                register.getAddress(), register.getGatewayIdentifier());
 
         // adds a given register-driver association
         // TODO: check if any register can be associated to more than one driver
@@ -809,26 +719,25 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             // create the new set of registers associated to the given driver
             driverRegisters = new HashSet<ModbusRegisterInfo>();
             this.driver2Register.put(driver, driverRegisters);
-
         }
         driverRegisters.add(register);
 
         synchronized (this)
         {
-
             // fill the server to register map
             Set<ModbusRegisterInfo> registers = this.gatewayAddress2Registers
-                    .get(gwAddress);
+                    .get(register.getGatewayIdentifier());
             if (registers == null)
             {
                 // create the new entry
                 registers = new HashSet<ModbusRegisterInfo>();
                 this.gatewayAddress2Registers
-                        .put(register.getGatewayIPAddress(), registers);
+                        .put(register.getGatewayIdentifier(), registers);
             }
 
             // handle the modbus connection
-            if (!this.connectionPool.containsKey(gwAddress))
+            if (!this.connectionPool
+                    .containsKey(register.getGatewayIdentifier()))
             {
                 // open the modbus connection
                 switch (gwProtocolVariant)
@@ -836,29 +745,32 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     case TCP:
                     case RTU_TCP:
                     case RTU_UDP:
-                        this.openConnection(gwAddress, gwPort,
-                                gwProtocolVariant);
+                        this.openConnection(register.getGatewayIdentifier(),
+                                gwAddress, gwPort, gwProtocolVariant);
                         break;
                     case RTU:
-                        this.openConnection(gwAddress, gwPort,
-                                gwProtocolVariant, serialParameters);
+                        this.openConnection(register.getGatewayIdentifier(),
+                                gwAddress, gwPort, gwProtocolVariant,
+                                serialParameters);
                         break;
                 }
 
             }
 
             // check if a poller is already available or not
-            ModbusPoller poller = this.pollerPool.get(gwAddress);
+            ModbusPoller poller = this.pollerPool
+                    .get(register.getGatewayIdentifier());
 
             // if no poller is currently handling the gateway, then create a new
             // one
             if (poller == null)
             {
                 // create a new poller
-                poller = new ModbusPoller(this, gwAddress);
+                poller = new ModbusPoller(this,
+                        register.getGatewayIdentifier());
 
                 // add the thread to the poller pool
-                this.pollerPool.put(gwAddress, poller);
+                this.pollerPool.put(register.getGatewayIdentifier(), poller);
 
                 // start polling
                 poller.start();
@@ -896,7 +808,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 
         // remove the register entry from the server to register map
         Set<ModbusRegisterInfo> serverRegisters = this.gatewayAddress2Registers
-                .get(register.getGatewayIPAddress());
+                .get(register.getGatewayIdentifier());
         if (serverRegisters != null)
         {
             // create the new entry
@@ -905,7 +817,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             // if it is the last entry in the set remove the map entry
             if (serverRegisters.isEmpty())
                 this.gatewayAddress2Registers
-                        .remove(register.getGatewayIPAddress());
+                        .remove(register.getGatewayIdentifier());
         }
 
     }
@@ -928,7 +840,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 
                 // remove the datapoints from the endpoint/datapoint association
                 Set<ModbusRegisterInfo> serverRegisters = this.gatewayAddress2Registers
-                        .get(register.getGatewayIPAddress());
+                        .get(register.getGatewayIdentifier());
                 if (serverRegisters != null)
                 {
                     // create the new entry
@@ -937,7 +849,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     // if it is the last entry in the set remove the map entry
                     if (serverRegisters.isEmpty())
                         this.gatewayAddress2Registers
-                                .remove(register.getGatewayIPAddress());
+                                .remove(register.getGatewayIdentifier());
                 }
             }
         }
@@ -949,11 +861,12 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * @param gwAddress
      * @return
      */
-    private void openConnection(final InetAddress gwAddress, final int gwPort,
+    private void openConnection(final String gwIdentifier,
+            final InetAddress gwAddress, final int gwPort,
             final ModbusProtocolVariant gwProtocol,
             final SerialParameters serialParameters)
     {
-        if (!this.connectionPool.containsKey(gwAddress))
+        if (!this.connectionPool.containsKey(gwIdentifier))
         {
             // handle the connection type
             MasterConnection connection = null;
@@ -1005,17 +918,16 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 catch (Exception e)
                 {
                     // log the connection error
-                    this.logger.log(LogService.LOG_ERROR, ModbusDriverImpl.logId
-                            + "Unable to connect to the Modbus TCP Slave with Address: "
-                            + gwAddress + "\nException: " + e);
+                    this.logger.error(
+                            "Unable to connect to the Modbus TCP Slave with Address: "
+                                    + gwAddress + "\nException: " + e);
 
                     if ((this.trialsDone < this.nConnectionTrials)
                             || (this.nConnectionTrials == 0))
                     {
                         // log a warning
-                        this.logger.log(LogService.LOG_WARNING,
-                                ModbusDriverImpl.logId
-                                        + "Unable to connect to the given Modbus gateway, retrying in "
+                        this.logger.warn(
+                                "Unable to connect to the given Modbus gateway, retrying in "
                                         + this.betweenTrialTimeMillis + " ms");
                         // schedule a new timer to re-call the open function
                         // after
@@ -1028,8 +940,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                             @Override
                             public void run()
                             {
-                                openConnection(gwAddress, gwPort, gwProtocol,
-                                        serialParameters);
+                                openConnection(gwIdentifier, gwAddress, gwPort,
+                                        gwProtocol, serialParameters);
                             }
                         }, this.betweenTrialTimeMillis);
 
@@ -1042,22 +954,21 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     else
                     {
                         // log a fatal error
-                        this.logger.log(LogService.LOG_ERROR,
-                                ModbusDriverImpl.logId
-                                        + "Unable to connect to the given Modbus gateway");
+                        this.logger.error(
+                                "Unable to connect to the given Modbus gateway");
                     }
                 }
 
-                this.connectionPool.put(gwAddress, connection);
+                this.connectionPool.put(gwIdentifier, connection);
             }
         }
         else
         {
             // log a fatal error
-            this.logger.log(LogService.LOG_ERROR,
-                    ModbusDriverImpl.logId + "Gateway " + gwAddress.toString()
-                            + " is currently not connected over the expected "
-                            + gwProtocol.toString() + " protocol.");
+            this.logger.error(
+                    "Requested to open a connection towards a Gateway {} which "
+                            + "is already in the pool of currently open connections",
+                    gwIdentifier);
         }
     }
 
@@ -1066,10 +977,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * 
      * 
      */
-    private void openConnection(final InetAddress gwAddress, final int gwPort,
+    private void openConnection(final String gwIdentifier,
+            final InetAddress gwAddress, final int gwPort,
             final ModbusProtocolVariant gwProtocol)
     {
-        openConnection(gwAddress, gwPort, gwProtocol, null);
+        openConnection(gwIdentifier, gwAddress, gwPort, gwProtocol, null);
     }
 
     /**
@@ -1079,17 +991,18 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * @param gwAddress
      * @return
      */
-    protected void closeAndReOpen(final InetAddress gwAddress, final int gwPort,
+    protected void closeAndReOpen(final String gwIdentifier,
+            final InetAddress gwAddress, final int gwPort,
             final ModbusProtocolVariant gwProtocol,
             final SerialParameters serialParameters)
     {
-        MasterConnection connection = this.connectionPool.get(gwAddress);
+        MasterConnection connection = this.connectionPool.get(gwIdentifier);
 
         if ((connection != null) && (!connection.isConnected()))
             connection.close();
 
         // remove the connection from the pool
-        this.connectionPool.remove(gwAddress);
+        this.connectionPool.remove(gwIdentifier);
 
         // schedule a new timer to re-call the open function after the
         // given trial timeout...
@@ -1100,7 +1013,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             @Override
             public void run()
             {
-                openConnection(gwAddress, gwPort, gwProtocol, serialParameters);
+                openConnection(gwIdentifier, gwAddress, gwPort, gwProtocol,
+                        serialParameters);
             }
         }, this.betweenTrialTimeMillis);
     }

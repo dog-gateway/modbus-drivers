@@ -17,7 +17,7 @@
  */
 package it.polito.elite.dog.drivers.modbus.network.regxlators;
 
-import org.osgi.service.log.LogService;
+import org.osgi.service.log.Logger;
 
 import net.wimpi.modbus.msg.ModbusRequest;
 import net.wimpi.modbus.msg.ModbusResponse;
@@ -57,7 +57,7 @@ public abstract class RegXlator
 	 */
 	protected String unitOfMeasure;
 	
-	public static LogService logger;
+	public static Logger logger;
 	
 	/**
 	 * Returns the value associated to the given register (with the associated

@@ -278,9 +278,6 @@ public class ModbusSingleTemperatureSensorDriverInstance
         tValue.setValue(DecimalMeasure.valueOf("0 " + temperatureUOM));
         this.currentState.setState(TemperatureState.class.getSimpleName(),
                 new TemperatureState(tValue));
-
-        // read the initial state
-        this.network.readAll(this.register2Notification.keySet());
     }
 
     @Override

@@ -255,9 +255,6 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance
         this.currentState.setState(
                 HumidityMeasurementState.class.getSimpleName(),
                 new HumidityMeasurementState(pValue));
-
-        // read the initial state
-        this.network.readAll(this.register2Notification.keySet());
     }
 
     @Override
