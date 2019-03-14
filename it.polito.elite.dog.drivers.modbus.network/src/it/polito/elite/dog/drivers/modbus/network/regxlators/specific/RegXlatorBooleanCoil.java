@@ -15,8 +15,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License
  */
-package it.polito.elite.dog.drivers.modbus.network.regxlators;
+package it.polito.elite.dog.drivers.modbus.network.regxlators.specific;
 
+import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
 import net.wimpi.modbus.msg.ModbusRequest;
 import net.wimpi.modbus.msg.ReadCoilsRequest;
 import net.wimpi.modbus.msg.ReadCoilsResponse;

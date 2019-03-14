@@ -15,11 +15,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License
  */
-package it.polito.elite.dog.drivers.modbus.network.regxlators;
+package it.polito.elite.dog.drivers.modbus.network.regxlators.specific;
 
 import java.nio.ByteBuffer;
 import java.util.Locale;
 
+import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
 import net.wimpi.modbus.msg.ModbusRequest;
 import net.wimpi.modbus.msg.ReadInputRegistersRequest;
 import net.wimpi.modbus.msg.ReadInputRegistersResponse;
@@ -66,14 +67,14 @@ public class RegXlator4ByteFloatInput extends RegXlator
 		*/
 		
 		//swap bytes
-		byte highWord[] = inputRegisters[0].toBytes();
-		byte lowWord[] = inputRegisters[1].toBytes();
+		byte highWord[] = inputRegisters[1].toBytes();
+		byte lowWord[] = inputRegisters[0].toBytes();
 		
 		//copy the two byte in the response byte array
-		bytes[3] = highWord[1];
-		bytes[2] = highWord[0];
-		bytes[1] = lowWord[1];
-		bytes[0] = lowWord[0];
+		bytes[1] = highWord[1];
+		bytes[0] = highWord[0];
+		bytes[3] = lowWord[1];
+		bytes[2] = lowWord[0];
 		
 		//wrap the byte array
 		ByteBuffer buffer = ByteBuffer.wrap(bytes);
@@ -96,8 +97,8 @@ public class RegXlator4ByteFloatInput extends RegXlator
 		buffer.putFloat(value);
 		
 		Register registers[] = new SimpleRegister[2];
-		registers[0] = new SimpleRegister(bytes[0], bytes[1]);
-		registers[1] = new SimpleRegister(bytes[2], bytes[3]);
+		registers[1] = new SimpleRegister(bytes[0], bytes[1]);
+		registers[0] = new SimpleRegister(bytes[2], bytes[3]);
 		return registers;
 	}
 	

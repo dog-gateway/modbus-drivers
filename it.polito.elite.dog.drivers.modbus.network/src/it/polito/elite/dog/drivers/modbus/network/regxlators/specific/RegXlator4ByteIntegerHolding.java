@@ -1,25 +1,20 @@
 /*
- * Dog - Network Driver
+ * Dog 2.0 - Modbus Network Driver
  * 
- * Copyright (c) 2012-2013 Dario Bonino
- * 
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License
+ * Copyright [2012] 
+ * [Dario Bonino (dario.bonino@polito.it), Politecnico di Torino] 
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. 
+ * You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed 
+ * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
+ * See the License for the specific language governing permissions and limitations under the License. 
  */
-package it.polito.elite.dog.drivers.modbus.network.regxlators;
+package it.polito.elite.dog.drivers.modbus.network.regxlators.specific;
 
 import java.nio.ByteBuffer;
 import java.util.Locale;
 
+import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
 import net.wimpi.modbus.msg.ModbusRequest;
 import net.wimpi.modbus.msg.ReadMultipleRegistersRequest;
 import net.wimpi.modbus.msg.ReadMultipleRegistersResponse;
@@ -30,15 +25,17 @@ import net.wimpi.modbus.procimg.SimpleRegister;
 /**
  * Handles translation of 4 bytes integer values...
  * 
- * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
- * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
+ * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>, Politecnico
+ *         di Torino
+ * @author <a href="mailto:muhammad.sanaullah@polito.it">Muhammad Sanaullah</a>,
+ *         Politecnico di Torino
  * 
  * @since Feb 27, 2012
  */
-public class RegXlator4ByteIntegerHoldingBE extends RegXlator
+public class RegXlator4ByteIntegerHolding extends RegXlator
 {
 	
-	public RegXlator4ByteIntegerHoldingBE()
+	public RegXlator4ByteIntegerHolding()
 	{
 		super();
 		this.typeSize = 4;
@@ -73,10 +70,10 @@ public class RegXlator4ByteIntegerHoldingBE extends RegXlator
 		byte lowWord[] = registers[0].toBytes();
 		
 		//copy the two byte in the response byte array
-		bytes[3] = highWord[1];
-		bytes[2] = highWord[0];
-		bytes[1] = lowWord[1];
-		bytes[0] = lowWord[0];
+		bytes[1] = highWord[1];
+		bytes[0] = highWord[0];
+		bytes[3] = lowWord[1];
+		bytes[2] = lowWord[0];
 		
 		//wrap the byte array
 		ByteBuffer buffer = ByteBuffer.wrap(bytes);

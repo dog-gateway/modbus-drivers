@@ -20,6 +20,18 @@ package it.polito.elite.dog.drivers.modbus.network.regxlators;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator2ByteIntegerInput;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator2ByteUnsignedIntegerInput;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteFloatHolding;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteFloatHoldingBE;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteFloatInput;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteFloatInputBE;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteIntegerHolding;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteIntegerHoldingBE;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteIntegerInput;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteIntegerInputBE;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlatorBooleanCoil;
+
 /**
  * A class for managing RegTranslator types, naming is partially derived from
  * the KNX specification
