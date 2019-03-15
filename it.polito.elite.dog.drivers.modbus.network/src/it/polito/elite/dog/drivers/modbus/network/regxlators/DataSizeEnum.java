@@ -26,14 +26,14 @@ public enum DataSizeEnum
                     64), FLOAT32("float32", 32), FLOAT64("float64", 64);
 
     private String value;
-    private int nBytes;
+    private int nBits;
     private int nRegisters;
 
-    private DataSizeEnum(String value, int nBytes)
+    private DataSizeEnum(String value, int nBits)
     {
         this.value = value;
-        this.nBytes = nBytes;
-        this.nRegisters = this.nBytes / 16;
+        this.nBits = nBits;
+        this.nRegisters = this.nBits / 16;
     }
 
     @Override
@@ -47,9 +47,9 @@ public enum DataSizeEnum
      * 
      * @return The length of the register in bytes.
      */
-    public int getNBytes()
+    public int getNBits()
     {
-        return this.nBytes;
+        return this.nBits;
     }
 
     /**

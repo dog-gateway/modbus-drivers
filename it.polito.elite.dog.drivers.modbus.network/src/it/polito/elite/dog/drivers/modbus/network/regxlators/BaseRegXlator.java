@@ -15,11 +15,19 @@ import java.nio.ByteBuffer;
 
 import net.wimpi.modbus.msg.ModbusRequest;
 import net.wimpi.modbus.msg.ModbusResponse;
+import net.wimpi.modbus.msg.ReadCoilsRequest;
 import net.wimpi.modbus.msg.ReadCoilsResponse;
+import net.wimpi.modbus.msg.ReadInputDiscretesRequest;
 import net.wimpi.modbus.msg.ReadInputDiscretesResponse;
+import net.wimpi.modbus.msg.ReadInputRegistersRequest;
 import net.wimpi.modbus.msg.ReadInputRegistersResponse;
+import net.wimpi.modbus.msg.ReadMultipleRegistersRequest;
 import net.wimpi.modbus.msg.ReadMultipleRegistersResponse;
+import net.wimpi.modbus.msg.WriteCoilRequest;
+import net.wimpi.modbus.msg.WriteMultipleRegistersRequest;
 import net.wimpi.modbus.procimg.InputRegister;
+import net.wimpi.modbus.procimg.Register;
+import net.wimpi.modbus.procimg.SimpleRegister;
 
 /**
  * A generic RegXlator able to handle almost all register types.
@@ -174,15 +182,82 @@ public class BaseRegXlator extends RegXlator
     @Override
     public ModbusRequest getWriteRequest(int address, String value)
     {
+        return this.getWriteRequest(address, value, null);
+    }
+
+    public ModbusRequest getWriteRequest(int address, String value,
+            String oldValue)
+    {
+        // the request, initially null
+        ModbusRequest request = null;
+
+        switch (this.registerType)
+        {
+            case COIL:
+            {
+                request = new WriteCoilRequest(address, Boolean.valueOf(value));
+                break;
+            }
+            case DISCRETE_INPUT:
+            case INPUT_REGISTER:
+            {
+                // do nothing: writing is not supported on any INPUT register
+                break;
+            }
+            case HOLDING_REGISTER:
+            {
+                Register[] registers = this.toRegisters(value, oldValue);
+                if (registers != null)
+                {
+                    request = new WriteMultipleRegistersRequest(address,
+                            registers);
+                }
+                break;
+            }
+        }
+
         // TODO Auto-generated method stub
-        return null;
+        return request;
     }
 
     @Override
     public ModbusRequest getReadRequest(int address)
     {
-        // TODO Auto-generated method stub
-        return null;
+        // the request, initially null
+        ModbusRequest request = null;
+
+        // generate a request tailored to the register type
+        switch (this.registerType)
+        {
+            case COIL:
+            {
+                request = new ReadCoilsRequest(address, 1);
+                break;
+            }
+            case DISCRETE_INPUT:
+            {
+                request = new ReadInputDiscretesRequest(address, 1);
+                break;
+            }
+            case HOLDING_REGISTER:
+            {
+                request = new ReadMultipleRegistersRequest(address,
+                        this.registerSize.getNRegisters());
+                break;
+            }
+            case INPUT_REGISTER:
+            {
+                request = new ReadInputRegistersRequest(address,
+                        this.registerSize.getNRegisters());
+            }
+
+        }
+
+        // backward compatibility (will be removed)
+        this.readRequest = request;
+
+        // return the request
+        return request;
     }
 
     // ------- PRIVATE METHODS ------------
@@ -262,17 +337,24 @@ public class BaseRegXlator extends RegXlator
 
         // scale the value if needed
         // WARNING!! this implies a precision loss for 64bit INT e UINT values
-        if (this.registerSize != DataSizeEnum.BIT && this.scaleFactor != 1.0)
+        if (this.registerSize != DataSizeEnum.BIT)
         {
-            scaledValue = scaledValue.doubleValue() * this.scaleFactor;
-        }
-        
-        // TODO: define if BIT values shall be boolean.
+            // avoid conversion and precision loss on unitary scale factors.
+            if (this.scaleFactor != 1.0)
+            {
+                scaledValue = scaledValue.doubleValue() * this.scaleFactor;
+            }
 
-        // no scaling can be applied to BIT values
-        value = "" + scaledValue
-                + ((this.unitOfMeasure != null) ? " " + this.unitOfMeasure
-                        : "");
+            // no scaling can be applied to BIT values
+            value = "" + scaledValue
+                    + ((this.unitOfMeasure != null) ? " " + this.unitOfMeasure
+                            : "");
+        }
+        else
+        {
+            // interpret BIT registers as boolean
+            value = "" + (scaledValue.shortValue() != 0 ? true : false);
+        }
 
         return value;
     }
@@ -294,7 +376,8 @@ public class BaseRegXlator extends RegXlator
         if (this.registerSize.getNRegisters() == registers.length)
         {
             // extract the register payload ready to be wrapped by a byte buffer
-            byte[] registerBytes = this.extractBEPayload(registers);
+            byte[] registerBytes = this.computeBEPayload(registers,
+                    this.getEndiannessMap(this.getEndiannessKey()));
 
             // wrap the register bytes as a byte buffer
             ByteBuffer registerBytesValue = ByteBuffer.wrap(registerBytes);
@@ -342,59 +425,20 @@ public class BaseRegXlator extends RegXlator
                 }
                 case BIT:
                 {
+                    // BIT is interpreted as the index of the bit starting from
+                    // the least significant bit
+                    // order LSB -> MSB
                     // get the right byte
-                    byte byteToMask = registerBytes[this.bit / 8];
+                    byte byteToMask = registerBytes[((registerBytes.length - 1)
+                            - this.bit) / 8];
 
                     // extract the bit of interest
-                    result = (byteToMask >> (7 - this.bit % 8)) & 0x01;
+                    result = (0x01 << (this.bit % 8)) & byteToMask;
                 }
             }
         }
 
         return result;
-    }
-
-    /**
-     * Extracts the "payload" of the single register (possibly spanning more
-     * than 16bit) handled by this {@link RegXlator}. The payload is extracted
-     * in a BIG ENDIAN order, ready to be wrapped by a {@link ByteBuffer}.
-     * 
-     * @param registers
-     *            The registers composing the "single register".
-     * @return The extracted payload as a BigEndian byte array.
-     */
-    private byte[] extractBEPayload(InputRegister[] registers)
-    {
-        // the re-ordere byte-level payload.
-        // must be big endian for subsequent wrapping in a byte buffer
-        byte[] payloadBytesBE = null;
-
-        // change behavior by lenght
-        if (this.registerSize.getNBytes() == 64)
-        {
-            // compute the index of the endianness map
-            int endiannessKey = ((this.doubleWordOrder == OrderEnum.LITTLE_ENDIAN)
-                    ? 0
-                    : 2)
-                    + ((this.wordOrder == OrderEnum.LITTLE_ENDIAN) ? 0 : 1);
-
-            payloadBytesBE = this.computeBEPayload(registers,
-                    this.endianess64bit[endiannessKey]);
-        }
-        else if (this.registerSize.getNBytes() == 32)
-        {
-            int endiannessKey = (this.wordOrder == OrderEnum.LITTLE_ENDIAN) ? 0
-                    : 1;
-
-            payloadBytesBE = this.computeBEPayload(registers,
-                    this.endianess32bit[endiannessKey]);
-        }
-        else if (this.registerSize.getNBytes() == 16)
-        {
-            payloadBytesBE = this.computeBEPayload(registers, new int[] { 0 });
-        }
-
-        return payloadBytesBE;
     }
 
     /**
@@ -431,5 +475,198 @@ public class BaseRegXlator extends RegXlator
         }
 
         return payloadBytesBE;
+    }
+
+    /**
+     * Convert a register value represented as a String into an array of
+     * registers ready to be written over the modbus line.
+     * 
+     * @param value
+     *            The value to convert.
+     * @return The corresponding registers in the order defined by this
+     *         regXlator.
+     */
+    private Register[] toRegisters(String value, String oldValue)
+    {
+        // the bytes to include in the registers
+        byte[] registerBytes = new byte[this.registerSize.getNBits()];
+
+        // the ByteBuffer to fill with the value
+        ByteBuffer buffer = ByteBuffer.wrap(registerBytes);
+
+        // handle different register types
+        switch (this.registerSize)
+        {
+            case BIT:
+            {
+                // mask value an only change the bit-th bit
+
+                // create the bitmask
+                int bitmask = ~(0x00000001 << this.bit);
+                // convert the value to int
+                int valueInt = Integer.valueOf(oldValue);
+
+                int maskedValue = valueInt & bitmask;
+
+                // only works for 16bit sizes, shall be extended for larger
+                // sizes
+                buffer.putShort((short) (maskedValue
+                        + (Boolean.valueOf(value) ? Math.pow(2, this.bit)
+                                : 0)));
+                break;
+            }
+            case FLOAT32:
+            {
+                buffer.putFloat(Float.valueOf(value));
+                break;
+            }
+            case FLOAT64:
+            {
+                buffer.putDouble(Double.valueOf(value));
+                break;
+            }
+            case INT16:
+            case UINT16:
+            {
+                buffer.putShort(Short.valueOf(value));
+                break;
+            }
+            case INT32:
+            case UINT32:
+            {
+                buffer.putInt(Integer.valueOf(value));
+                break;
+            }
+            case INT64:
+            case UINT64:
+            {
+                buffer.putLong(Integer.valueOf(value));
+                break;
+            }
+        }
+
+        // translate big endian bytes in registers
+        return this.composeRegisters(registerBytes);
+    }
+
+    /**
+     * Compose the set of modbus registers corresponding to a given array of
+     * bytes representing a register value. The bytes are supposed to be in BIG
+     * ENDIAN order.
+     * 
+     * @param registerBytes
+     *            The bytes of the value to represent in terms of modbus
+     *            registers.
+     * @return The modbus registers, re-arranges in the order specified by this
+     *         regXlator endianness parameters.
+     */
+    private Register[] composeRegisters(byte[] registerBytes)
+    {
+        // the resulting registers, in the right order
+        Register[] registers = null;
+
+        // the registers corresponding to the given bytes in BIG_ENDIAN order
+        Register[] beRegisters = new Register[this.registerSize
+                .getNRegisters()];
+
+        // build the base registers depending on the byte order
+        for (int i = 0; i < registerBytes.length; i += 2)
+        {
+            // registers are 2-byte long
+            if (this.byteOrder == OrderEnum.BIG_ENDIAN)
+            {
+                beRegisters[i] = new SimpleRegister(registerBytes[i],
+                        registerBytes[i + 1]);
+            }
+            else
+            {
+                beRegisters[i] = new SimpleRegister(registerBytes[i + 1],
+                        registerBytes[i]);
+            }
+        }
+
+        // re-order depending on word and double word order
+        if (this.registerSize.getNRegisters() > 1)
+        {
+            registers = this.reArrangeRegisters(beRegisters);
+        }
+        else
+        {
+            registers = beRegisters;
+        }
+
+        return registers;
+    }
+
+    /**
+     * Given a set of registers in BIG ENDIAN order, re-arrange the register
+     * order depending on the endianness parameters associated to this
+     * regxlator.
+     * 
+     * @param beRegisters
+     *            The registers in BIG ENDIAN order.
+     * @return The registers in the order corresponding to the current regxlator
+     *         endianness parameters.
+     */
+    private Register[] reArrangeRegisters(Register[] beRegisters)
+    {
+        Register[] reOrderedRegisters = new Register[beRegisters.length];
+        // get the order map
+        int[] orderingMap = this.getEndiannessMap(this.getEndiannessKey());
+
+        for (int i = 0; i < beRegisters.length; i++)
+        {
+            reOrderedRegisters[orderingMap[i]] = beRegisters[i];
+        }
+        return reOrderedRegisters;
+    }
+
+    /**
+     * Compute the key (int) to use for extracting the register map from the
+     * endianness lookup table.
+     * 
+     * @return the position in the lookup table to use for encoding/decoding the
+     *         modbus registers contained in requests/responses that are handled
+     *         by this regXlator.
+     */
+    private int getEndiannessKey()
+    {
+        int endiannessKey = -1;
+        if (this.registerSize.getNBits() == 64)
+        {
+            endiannessKey = ((this.doubleWordOrder == OrderEnum.LITTLE_ENDIAN)
+                    ? 0
+                    : 2)
+                    + ((this.wordOrder == OrderEnum.LITTLE_ENDIAN) ? 0 : 1);
+        }
+        else if (this.registerSize.getNBits() == 32)
+        {
+            endiannessKey = (this.wordOrder == OrderEnum.LITTLE_ENDIAN) ? 0 : 1;
+        }
+
+        return endiannessKey;
+    }
+
+    /**
+     * Get the register mapping array (array of register indexes in the order
+     * required to convert the array of registers into an BIG_ENDIAN array of
+     * registers)
+     * 
+     * @param endiannessKey
+     *            The position of the array in the endianness map.
+     * @return The mapping array.
+     */
+    private int[] getEndiannessMap(int endiannessKey)
+    {
+        int[] endiannessMap = new int[] { 0 };
+        if (this.registerSize.getNBits() == 64)
+        {
+            endiannessMap = endianess64bit[endiannessKey];
+        }
+        else if (this.registerSize.getNBits() == 32)
+        {
+            endiannessMap = endianess32bit[endiannessKey];
+        }
+        return endiannessMap;
     }
 }
