@@ -13,6 +13,9 @@ package it.polito.elite.dog.drivers.modbus.network.regxlators;
 
 import java.nio.ByteBuffer;
 
+import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
+import it.polito.elite.dog.drivers.modbus.network.info.OrderEnum;
+import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
 import net.wimpi.modbus.msg.ModbusRequest;
 import net.wimpi.modbus.msg.ModbusResponse;
 import net.wimpi.modbus.msg.ReadCoilsRequest;
@@ -185,6 +188,29 @@ public class BaseRegXlator extends RegXlator
         return this.getWriteRequest(address, value, null);
     }
 
+    /**
+     * Prepare a write request for the register having the given address. Allows
+     * specifying the value to write in the register and, for BIT register only,
+     * allows to specify the value of the register where the bit value shall be
+     * applied.
+     * 
+     * @param address
+     *            The address of the register
+     * @param value
+     *            The value to assign to the register as a {@link String}. It
+     *            will be converted to the right type depending on the regxlator
+     *            parameters.
+     * @param oldValue
+     *            The value of the register to which shall be applied the BIT
+     *            value specified in the
+     * 
+     *            <pre>
+     *            value
+     * 
+     *            <pre>
+     *            parameter of this method. Only used in BIT registers.
+     * @return The write request to use on the modbus communication stack.
+     */
     public ModbusRequest getWriteRequest(int address, String value,
             String oldValue)
     {
@@ -219,6 +245,7 @@ public class BaseRegXlator extends RegXlator
         // TODO Auto-generated method stub
         return request;
     }
+
 
     @Override
     public ModbusRequest getReadRequest(int address)

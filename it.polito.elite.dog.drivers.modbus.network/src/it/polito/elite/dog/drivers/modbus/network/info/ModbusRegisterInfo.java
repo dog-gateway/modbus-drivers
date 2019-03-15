@@ -53,9 +53,22 @@ public class ModbusRegisterInfo
     // the register xlator
     private RegXlator xlator;
 
+    // the request timeout defined for the register
+    private long requestTimeoutMillis;
+    // the minimum gap between requests to the same register
+    private long requestGapMillis;
+
     // the register length
     private int registerLenghtInBits;
     private int registerLenghtInWords;
+
+    /**
+     * Empty class constructor, implements the bean pattern.
+     */
+    public ModbusRegisterInfo()
+    {
+        // intentionally left empty
+    }
 
     /**
      * The class constructor, given a register address and type, creates a new
@@ -266,6 +279,52 @@ public class ModbusRegisterInfo
     public void setSerialParameters(SerialParameters serialParameters)
     {
         this.serialParameters = serialParameters;
+    }
+
+    /**
+     * Provides the timeout to wait for a response for this specific register.
+     * 
+     * @return the requestTimeoutMillis The timeout in milliseconds.
+     */
+    public long getRequestTimeoutMillis()
+    {
+        return requestTimeoutMillis;
+    }
+
+    /**
+     * Sets the timeout to wait for a response for this specific register.
+     * 
+     * @param requestTimeoutMillis
+     *            The timeout in milliseconds.
+     */
+    public void setRequestTimeoutMillis(long requestTimeoutMillis)
+    {
+        this.requestTimeoutMillis = requestTimeoutMillis;
+    }
+
+    /**
+     * Provides the minimum gap that shall be preserved between two subsequent
+     * requests to the register.
+     * 
+     * @return the minimum gap between 2 subsequent requests to the same
+     *         register, in milliseconds.
+     */
+    public long getRequestGapMillis()
+    {
+        return requestGapMillis;
+    }
+
+    /**
+     * Sets the minimum gap that shall be preserved between two subsequent
+     * requests to the register.
+     * 
+     * @param requestGapMillis
+     *            the minimum gap between 2 subsequent requests to the same
+     *            register, in milliseconds.
+     */
+    public void setRequestGapMillis(long requestGapMillis)
+    {
+        this.requestGapMillis = requestGapMillis;
     }
 
     /**

@@ -10,7 +10,7 @@
  * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
  * See the License for the specific language governing permissions and limitations under the License. 
  */
-package it.polito.elite.dog.drivers.modbus.network.regxlators;
+package it.polito.elite.dog.drivers.modbus.network.info;
 
 /**
  * An enumeration representing the byte (or word) order of a modbus register.

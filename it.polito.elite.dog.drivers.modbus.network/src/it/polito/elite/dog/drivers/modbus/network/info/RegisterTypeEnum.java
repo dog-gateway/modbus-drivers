@@ -10,30 +10,31 @@
  * on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. 
  * See the License for the specific language governing permissions and limitations under the License. 
  */
-package it.polito.elite.dog.drivers.modbus.network.regxlators;
+package it.polito.elite.dog.drivers.modbus.network.info;
 
 /**
- * An enumeration representing the data size of a modbus register.
+ * An enumeration representing the type of a modbus register, either an input
+ * register, an holding register, a coil
  * 
  * @author <a href="mailto:dario.bonino@gmail.com">Dario Bonino</a>
  *
  * @since Mar 14, 2019
  */
-public enum DataSizeEnum
+public enum RegisterTypeEnum
 {
-    BIT("bit", 16), INT16("int16", 16), UINT16("uint16", 16), INT32("int32",
-            32), UINT32("uint32", 32), INT64("int64", 64), UINT64("uint64",
-                    64), FLOAT32("float32", 32), FLOAT64("float64", 64);
+    INPUT_REGISTER("ir"),
+
+    HOLDING_REGISTER("hr"),
+
+    COIL("c"),
+
+    DISCRETE_INPUT("di");
 
     private String value;
-    private int nBits;
-    private int nRegisters;
 
-    private DataSizeEnum(String value, int nBits)
+    private RegisterTypeEnum(String value)
     {
         this.value = value;
-        this.nBits = nBits;
-        this.nRegisters = this.nBits / 16;
     }
 
     @Override
@@ -43,35 +44,15 @@ public enum DataSizeEnum
     }
 
     /**
-     * Provides the length of the register in bytes.
-     * 
-     * @return The length of the register in bytes.
-     */
-    public int getNBits()
-    {
-        return this.nBits;
-    }
-
-    /**
-     * Provides the length of the register in "base register -16bit" units
-     * 
-     * @return The length of the register in 16bit blocks.
-     */
-    public int getNRegisters()
-    {
-        return this.nRegisters;
-    }
-
-    /**
-     * Converts a {@link String} to a {@link DataSizeEnum} value.
+     * Create a {@link RegisterTypeEnum} from a {@link String}.
      * 
      * @param text
      *            The {@link String} to convert.
-     * @return The converted {@link DataSizeEnum} value or null.
+     * @return The corresponding {@link RegisterTypeEnum} value or null.
      */
-    public static DataSizeEnum fromValue(String text)
+    public static RegisterTypeEnum fromValue(String text)
     {
-        for (DataSizeEnum b : DataSizeEnum.values())
+        for (RegisterTypeEnum b : RegisterTypeEnum.values())
         {
             if (String.valueOf(b.value).equals(text))
             {

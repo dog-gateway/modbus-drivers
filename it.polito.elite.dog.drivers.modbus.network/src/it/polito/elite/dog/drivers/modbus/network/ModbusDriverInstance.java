@@ -22,18 +22,25 @@ import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
 import it.polito.elite.dog.core.library.model.StatefulDevice;
 import it.polito.elite.dog.core.library.util.ElementDescription;
+import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
+import it.polito.elite.dog.drivers.modbus.network.info.OrderEnum;
+import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlatorTypes;
 import net.wimpi.modbus.util.SerialParameters;
 
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.device.Device;
+import org.osgi.service.log.Logger;
 import org.osgi.util.tracker.ServiceTracker;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -81,19 +88,8 @@ public abstract class ModbusDriverInstance extends
     // the command2datapoint map
     protected Map<CNParameters, ModbusRegisterInfo> command2Register;
 
-    /**
-     * Notifies a device-specific driver of a new register value coming from the
-     * underlying modbus network connection (either through polling or through
-     * direct read). The updated value is contained in the given
-     * {@link ModbusRegisterInfo} instance.
-     * 
-     * @param dataPointInfo
-     *            The {@link DataPointInfo} instance representing the data point
-     *            whose value has changed.
-     * @param string
-     */
-    public abstract void newMessageFromHouse(ModbusRegisterInfo dataPointInfo,
-            String string);
+    // the instance logger
+    protected Logger logger;
 
     /**
      * The constructor with serial parameters, useful for the serial
@@ -106,9 +102,9 @@ public abstract class ModbusDriverInstance extends
      * @param device
      *            the device to which this driver is attached/associated
      */
-    public ModbusDriverInstance(ModbusNetwork network,
-            String gwAddress, String gwPort, String gwProtocol, SerialParameters serialParams, BundleContext ctx,
-            ServiceReference<Device> deviceReference)
+    public ModbusDriverInstance(ModbusNetwork network, String gwAddress,
+            String gwPort, String gwProtocol, SerialParameters serialParams,
+            BundleContext ctx, ServiceReference<Device> deviceReference)
     {
         super(ctx, deviceReference, null);
 
@@ -135,6 +131,20 @@ public abstract class ModbusDriverInstance extends
         // open the tracker
         this.open();
     }
+
+    /**
+     * Notifies a device-specific driver of a new register value coming from the
+     * underlying modbus network connection (either through polling or through
+     * direct read). The updated value is contained in the given
+     * {@link ModbusRegisterInfo} instance.
+     * 
+     * @param dataPointInfo
+     *            The {@link DataPointInfo} instance representing the data point
+     *            whose value has changed.
+     * @param string
+     */
+    public abstract void newMessageFromHouse(ModbusRegisterInfo dataPointInfo,
+            String string);
 
     /*
      * (non-Javadoc)
@@ -166,7 +176,7 @@ public abstract class ModbusDriverInstance extends
         {
             // store a reference to the device
             this.device = (ControllableDevice) device;
-            
+
             // register the driver on the device
             this.device.setDriver(this);
 
@@ -211,7 +221,7 @@ public abstract class ModbusDriverInstance extends
     @Override
     public void removedService(ServiceReference<Device> reference,
             ControllableDevice service)
-    {       
+    {
         // perform de-registration from the network driver
         this.network.removeDriver(this);
 
@@ -238,201 +248,6 @@ public abstract class ModbusDriverInstance extends
      *            the register to add as a {@link ModbusRegisterInfo} instance.
      */
     protected abstract void addToNetworkDriver(ModbusRegisterInfo register);
-
-    /***
-     * Fills the inner data structures depending on the specific device
-     * configuration parameters, extracted from the device instance associated
-     * to this driver instance
-     */
-    private void fillConfiguration()
-    {
-        // gets the properties shared by almost all Modbus devices, i.e. the
-        // register address, the slave id, the register type and the unit of
-        // measure
-        // It must be noticed that such informations are specified for each
-        // command/notification while no common parameters are defined/handled
-
-        // get parameters associated to each device command (if any)
-        Set<ElementDescription> commandsSpecificParameters = this.device
-                .getDeviceDescriptor().getCommandSpecificParams();
-
-        // get parameters associated to each device notification (if any)
-        Set<ElementDescription> notificationsSpecificParameters = this.device
-                .getDeviceDescriptor().getNotificationSpecificParams();
-
-        // --------------- Handle command specific parameters ----------------
-        for (ElementDescription parameter : commandsSpecificParameters)
-        {
-            try
-            {
-                // the parameter map
-                Map<String, String> params = parameter.getElementParams();
-
-                // get the real command name
-                String realCommandName = params.get(ModbusInfo.COMMAND_NAME);
-
-                // get the Modbus register address
-                String registerAddress = params
-                        .get(ModbusInfo.REGISTER_ADDRESS);
-
-                // get the Modbus register unit of measure
-                String unitOfMeasure = params.get(ModbusInfo.REGISTER_UOM);
-
-                // get the Modbus register type
-                String registerType = params.get(ModbusInfo.REGISTER_TYPE);
-
-                // get the Modbus register slave id
-                String registerSlaveId = params.get(ModbusInfo.SLAVE_ID);
-
-                // get the Modbus register scale factor if needed
-                String scaleFactor = params.get(ModbusInfo.SCALE_FACTOR);
-
-                // if no data point id has been specified, then the command
-                // cannot be handled
-                if ((registerAddress != null) && (registerType != null)
-                        && (registerSlaveId != null) && (scaleFactor != null))
-                {
-                    // build the data point info instance to associate to this
-                    // command
-                    ModbusRegisterInfo register = new ModbusRegisterInfo(
-                            Integer.valueOf(registerAddress.trim()),
-                            Integer.valueOf(registerType.trim()));
-
-                    // fill the register gateway address
-                    register.setGatewayIPAddress(
-                            InetAddress.getByName(this.gwAddress));
-
-                    // fill the register gateway port
-                    register.setGatewayPort(this.gwPort);
-
-                    // fill the register serial parameters (for serial devices)
-                    register.setSerialParameters(this.serialParameters);
-
-                    // fill the protocol variant associated to the gateway
-                    register.setGatewayProtocol(this.gwProtocol);
-
-                    // fill the slave id
-                    register.setSlaveId(Integer.valueOf(registerSlaveId));
-
-                    // fill the translator properties
-                    RegXlator xlator = register.getXlator();
-
-                    // the unit of measure
-                    xlator.setUnitOfMeasure(unitOfMeasure);
-                    xlator.setScaleFactor(Double.valueOf(scaleFactor.trim()));
-
-                    CNParameters cmdInfo = new CNParameters(realCommandName,
-                            parameter.getElementParams());
-                    // add the command to data point entry
-                    this.command2Register.put(cmdInfo, register);
-
-                    // add the datapoint to the set of managed datapoints
-                    this.managedRegisters.add(register);
-                }
-            }
-            catch (Exception e)
-            {
-                // do not handle the register commands...
-            }
-        }
-
-        // --------------- Handle notification specific parameters
-        // ----------------
-        for (ElementDescription parameter : notificationsSpecificParameters)
-        {
-            try
-            {
-                // the parameter map
-                Map<String, String> params = parameter.getElementParams();
-
-                // get the real command name
-                String notificationName = params
-                        .get(ModbusInfo.NOTIFICATION_NAME);
-
-                // get the Modbus register address
-                String registerAddress = params
-                        .get(ModbusInfo.REGISTER_ADDRESS);
-
-                // get the Modbus register unit of measure
-                String unitOfMeasure = params.get(ModbusInfo.REGISTER_UOM);
-
-                // get the Modbus register type
-                String registerType = params.get(ModbusInfo.REGISTER_TYPE);
-
-                // get the Modbus register slave id
-                String registerSlaveId = params.get(ModbusInfo.SLAVE_ID);
-
-                // get the Modbus register scale factor if needed
-                String scaleFactor = params.get(ModbusInfo.SCALE_FACTOR);
-
-                // if no data point id has been specified, then the command
-                // cannot be handled
-                if ((registerAddress != null) && (registerType != null)
-                        && (registerSlaveId != null) && (scaleFactor != null))
-                {
-                    // build the data point info instance to associate to this
-                    // command
-                    ModbusRegisterInfo register = new ModbusRegisterInfo(
-                            Integer.valueOf(registerAddress.trim()),
-                            Integer.valueOf(registerType.trim()));
-
-                    // fill the register gateway address
-                    register.setGatewayIPAddress(
-                            InetAddress.getByName(this.gwAddress));
-
-                    // fill the register gateway port
-                    register.setGatewayPort(this.gwPort);
-
-                    // fill the protocol variant associated to the gateway
-                    register.setGatewayProtocol(this.gwProtocol);
-
-                    // for the serial connections, it adds the serial parameters
-                    if (this.getGwProtocol()
-                            .equals(ModbusProtocolVariant.RTU.toString()))
-                    {
-                        register.setSerialParameters(serialParameters);
-                    }
-
-                    // fill the slave id
-                    register.setSlaveId(Integer.valueOf(registerSlaveId));
-
-                    // fill the translator properties
-                    RegXlator xlator = register.getXlator();
-
-                    // the unit of measure
-                    xlator.setUnitOfMeasure(unitOfMeasure);
-                    xlator.setScaleFactor(Double.valueOf(scaleFactor.trim()));
-
-                    // fill the data point to notification map, if the data
-                    // point
-                    // has
-                    // never been registered create a new entry in the map.
-                    Set<CNParameters> notificationNames = this.register2Notification
-                            .get(register);
-
-                    if (notificationNames == null)
-                    {
-                        notificationNames = new HashSet<CNParameters>();
-                        this.register2Notification.put(register,
-                                notificationNames);
-                    }
-                    // add the notification name to the set associated to the dp
-                    // datapoint
-                    CNParameters nInfo = new CNParameters(notificationName,
-                            parameter.getElementParams());
-                    notificationNames.add(nInfo);
-
-                    // add the datapoint to the set of managed datapoints
-                    this.managedRegisters.add(register);
-                }
-            }
-            catch (Exception e)
-            {
-                // do not handle the register commands...
-            }
-        }
-
-    }
 
     /**
      * Tries to retrieve the initial state of the device handled by this driver
@@ -475,5 +290,234 @@ public abstract class ModbusDriverInstance extends
     public SerialParameters getSerialParameters()
     {
         return serialParameters;
+    }
+
+    // -------- PRIVATE METHODS ----------
+
+    /***
+     * Fills the inner data structures depending on the specific device
+     * configuration parameters, extracted from the device instance associated
+     * to this driver instance
+     */
+    private void fillConfiguration()
+    {
+        // Gets the properties shared by almost all Modbus devices, i.e. the
+        // register address, the slave id, the register type and the unit of
+        // measure. It must be noticed that such informations are specified for
+        // each command/notification while no common parameters are
+        // defined/handled
+
+        // get parameters associated to each device command (if any)
+        Set<ElementDescription> commandsSpecificParameters = this.device
+                .getDeviceDescriptor().getCommandSpecificParams();
+
+        // get parameters associated to each device notification (if any)
+        Set<ElementDescription> notificationsSpecificParameters = this.device
+                .getDeviceDescriptor().getNotificationSpecificParams();
+
+        // --------------- Handle command specific parameters ----------------
+        for (ElementDescription parameter : commandsSpecificParameters)
+        {
+            try
+            {
+                // the parameter map
+                Map<String, String> params = parameter.getElementParams();
+
+                // get the real command name
+                String realCommandName = params.get(ModbusInfo.COMMAND_NAME);
+
+                ModbusRegisterInfo registerInfo = this
+                        .extractRegisterSpecificParameters(params);
+
+                CNParameters cmdInfo = new CNParameters(realCommandName,
+                        parameter.getElementParams());
+                // add the command to data point entry
+                this.command2Register.put(cmdInfo, registerInfo);
+
+                // add the datapoint to the set of managed datapoints
+                this.managedRegisters.add(registerInfo);
+
+            }
+            catch (UnknownHostException uhe)
+            {
+                // log the error
+                /*this.logger.error(
+                        "Error while parsing register-specific information: \n{}",
+                        uhe);*/
+                System.err.println("Error while parsing register-specific information:\n"+uhe);
+            }
+            catch (NumberFormatException nfe)
+            {
+                // log the error
+                /*this.logger.error(
+                        "Error while parsing register-specific information: \n{}",
+                        nfe);*/
+                System.err.println("Error while parsing register-specific information:\n"+nfe);
+            }
+        }
+
+        // ----- Handle notification specific parameters ----------
+
+        for (ElementDescription parameter : notificationsSpecificParameters)
+        {
+            try
+            {
+                // the parameter map
+                Map<String, String> params = parameter.getElementParams();
+
+                // get the notification name
+                String notificationName = params
+                        .get(ModbusInfo.NOTIFICATION_NAME);
+
+                // extract the register info given the notification parameters
+                ModbusRegisterInfo registerInfo = this
+                        .extractRegisterSpecificParameters(params);
+
+                // fill the data point to notification map, if the data
+                // point has never been registered create a new entry in the
+                // map.
+                Set<CNParameters> notificationNames = this.register2Notification
+                        .get(registerInfo);
+
+                if (notificationNames == null)
+                {
+                    notificationNames = new HashSet<CNParameters>();
+                    this.register2Notification.put(registerInfo,
+                            notificationNames);
+                }
+
+                // add the notification name to the set associated to the dp
+                // datapoint
+                CNParameters nInfo = new CNParameters(notificationName,
+                        parameter.getElementParams());
+                notificationNames.add(nInfo);
+
+                // add the datapoint to the set of managed datapoints
+                this.managedRegisters.add(registerInfo);
+
+            }
+            catch (UnknownHostException uhe)
+            {
+                // log the error
+                /* this.logger.error(
+                        "Error while parsing register-specific information: \n{}",
+                        uhe);*/
+                System.err.println("Error while parsing register-specific information:\n"+uhe);
+            }
+            catch (NumberFormatException nfe)
+            {
+                // log the error
+                /* this.logger.error(
+                        "Error while parsing register-specific information: \n{}",
+                        nfe);*/
+                System.err.println("Error while parsing register-specific information:\n"+nfe);
+            }
+        }
+
+    }
+
+    private ModbusRegisterInfo extractRegisterSpecificParameters(
+            Map<String, String> params) throws UnknownHostException
+    {
+        // get the Modbus register address
+        int registerAddress = Integer
+                .valueOf(params.get(ModbusInfo.REGISTER_ADDRESS));
+        // get the Modbus register unit of measure
+        String unitOfMeasure = params.get(ModbusInfo.REGISTER_UOM);
+        // get the Modbus register type as a string
+        String registerType = params.get(ModbusInfo.REGISTER_TYPE);
+        // get the Modbus register slave id
+        int registerSlaveId = Integer
+                .valueOf(params.get(ModbusInfo.SLAVE_ID).trim());
+        // get the Modbus register scale factor if needed
+        double scaleFactor = Double
+                .valueOf(params.get(ModbusInfo.SCALE_FACTOR).trim());
+        // get the request timeout
+        long requestTimeout = Long
+                .valueOf(params.get(ModbusInfo.REQUEST_TIMEOUT_MILLIS).trim());
+        // get the minimum request gap
+        long requestGap = Long
+                .valueOf(params.get(ModbusInfo.REQUEST_GAP_MILLIS).trim());
+
+        // try parsing the register type as enum, if the result is null
+        // than the register type is likley to be specified using the
+        // former numeric-based specification.
+        RegisterTypeEnum regTypeNew = RegisterTypeEnum.fromValue(registerType);
+
+        // create the register info to store the register-specific
+        // parameters
+        ModbusRegisterInfo registerInfo = new ModbusRegisterInfo();
+
+        // set the register info parameters
+        registerInfo.setAddress(registerAddress);
+
+        // fill the register gateway address
+        registerInfo.setGatewayIPAddress(InetAddress.getByName(this.gwAddress));
+
+        // fill the register gateway port
+        registerInfo.setGatewayPort(this.gwPort);
+
+        // fill the protocol variant associated to the gateway
+        registerInfo.setGatewayProtocol(this.gwProtocol);
+
+        // for the serial connections, it adds the serial parameters
+        if (this.gwProtocol.equals(ModbusProtocolVariant.RTU.toString()))
+        {
+            registerInfo.setSerialParameters(serialParameters);
+        }
+
+        // fill the slave id
+        registerInfo.setSlaveId(registerSlaveId);
+
+        // fill the request timeout
+        registerInfo.setRequestTimeoutMillis(requestTimeout);
+
+        // fill the request gap
+        registerInfo.setRequestGapMillis(requestGap);
+
+        // support to v1.2 version of driver
+        if (regTypeNew != null)
+        {
+            // the register data size
+            DataSizeEnum dataSize = DataSizeEnum
+                    .fromValue(params.get(ModbusInfo.DATA_SIZE).trim());
+            // the register byte order
+            OrderEnum byteOrder = OrderEnum
+                    .fromValue(params.get(ModbusInfo.BYTE_ORDER).trim());
+            // the word order
+            OrderEnum wordOrder = OrderEnum
+                    .fromValue(params.get(ModbusInfo.WORD_ORDER).trim());
+            // the double word order
+            OrderEnum doubleWordOrder = OrderEnum
+                    .fromValue(params.get(ModbusInfo.DOUBLE_WORD_ORDER).trim());
+            // the bit value
+            int bit = Integer.valueOf(params.get(ModbusInfo.BIT).trim());
+
+            // build a BaseXlator
+            BaseRegXlator baseXlator = new BaseRegXlator(dataSize, regTypeNew,
+                    byteOrder, wordOrder, doubleWordOrder, bit);
+
+            // add the scale factor
+            baseXlator.setScaleFactor(scaleFactor);
+
+            // set the register info xlator
+            registerInfo.setXlator(baseXlator);
+        }
+        else
+        {
+
+            // fill the translator properties
+            RegXlator xlator = RegXlatorTypes
+                    .createRegXlator(Integer.valueOf(registerType));
+
+            // the unit of measure
+            xlator.setUnitOfMeasure(unitOfMeasure);
+            xlator.setScaleFactor(scaleFactor);
+
+            // set the register info xlator
+            registerInfo.setXlator(xlator);
+        }
+
+        return registerInfo;
     }
 }
