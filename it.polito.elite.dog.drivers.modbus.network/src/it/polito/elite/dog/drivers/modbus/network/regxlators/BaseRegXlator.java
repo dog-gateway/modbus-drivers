@@ -55,14 +55,14 @@ public class BaseRegXlator
     protected OrderEnum doubleWordOrder;
     // the bit to extract (valid only for bit registers)
     protected int bit = -1; // default
-    
+
     /**
      * The scale factor with which the actual modbus register value shall be
      * scaled before providing/setting the value into a
      * {@link ModbusRegisterInfo} instance. By default it is equal to 1.0.
      */
     protected double scaleFactor = 1.0;
-    
+
     /**
      * The unit of Measure associated to the values translated by an instance of
      * a {@link RegXlator} subclass.
@@ -84,7 +84,7 @@ public class BaseRegXlator
     // 0 10
     // 1 01
     protected int[][] endianess32bit = { { 1, 0 }, { 0, 1 } };
-    
+
     // the class logger
     public static Logger logger;
 
@@ -308,7 +308,7 @@ public class BaseRegXlator
     {
         return registerType;
     }
-    
+
     /**
      * @return the scaleFactor
      */
@@ -316,7 +316,7 @@ public class BaseRegXlator
     {
         return scaleFactor;
     }
-    
+
     /**
      * @return the unitOfMeasure
      */
@@ -326,7 +326,8 @@ public class BaseRegXlator
     }
 
     /**
-     * @param scaleFactor the scaleFactor to set
+     * @param scaleFactor
+     *            the scaleFactor to set
      */
     public void setScaleFactor(double scaleFactor)
     {
@@ -334,7 +335,8 @@ public class BaseRegXlator
     }
 
     /**
-     * @param unitOfMeasure the unitOfMeasure to set
+     * @param unitOfMeasure
+     *            the unitOfMeasure to set
      */
     public void setUnitOfMeasure(String unitOfMeasure)
     {
@@ -656,43 +658,43 @@ public class BaseRegXlator
                 // create the bitmask
                 int bitmask = ~(0x00000001 << this.bit);
                 // convert the value to int
-                int valueInt = Integer.valueOf(oldValue);
+                int valueInt = Integer.valueOf(oldValue.trim());
 
                 int maskedValue = valueInt & bitmask;
 
                 // only works for 16bit sizes, shall be extended for larger
                 // sizes
                 buffer.putShort((short) (maskedValue
-                        + (Boolean.valueOf(value) ? Math.pow(2, this.bit)
+                        + (Boolean.valueOf(value.trim()) ? Math.pow(2, this.bit)
                                 : 0)));
                 break;
             }
             case FLOAT32:
             {
-                buffer.putFloat(Float.valueOf(value));
+                buffer.putFloat(Float.valueOf(value.trim()));
                 break;
             }
             case FLOAT64:
             {
-                buffer.putDouble(Double.valueOf(value));
+                buffer.putDouble(Double.valueOf(value.trim()));
                 break;
             }
             case INT16:
             case UINT16:
             {
-                buffer.putShort(Short.valueOf(value));
+                buffer.putShort(Short.valueOf(value.trim()));
                 break;
             }
             case INT32:
             case UINT32:
             {
-                buffer.putInt(Integer.valueOf(value));
+                buffer.putInt(Integer.valueOf(value.trim()));
                 break;
             }
             case INT64:
             case UINT64:
             {
-                buffer.putLong(Integer.valueOf(value));
+                buffer.putLong(Integer.valueOf(value.trim()));
                 break;
             }
         }
