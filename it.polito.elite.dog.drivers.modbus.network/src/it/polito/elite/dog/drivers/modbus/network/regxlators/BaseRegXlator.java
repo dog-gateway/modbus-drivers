@@ -246,7 +246,6 @@ public class BaseRegXlator extends RegXlator
         return request;
     }
 
-
     @Override
     public ModbusRequest getReadRequest(int address)
     {
@@ -456,11 +455,17 @@ public class BaseRegXlator extends RegXlator
                     // the least significant bit
                     // order LSB -> MSB
                     // get the right byte
-                    byte byteToMask = registerBytes[((registerBytes.length - 1)
-                            - this.bit) / 8];
+                    int byteIndex = ((registerBytes.length * 8 - 1) - this.bit)
+                            / 8;
 
-                    // extract the bit of interest
-                    result = (0x01 << (this.bit % 8)) & byteToMask;
+                    // protection against out-of-bound exceptions...
+                    if (byteIndex >= 0 && byteIndex < registerBytes.length)
+                    {
+                        byte byteToMask = registerBytes[byteIndex];
+
+                        // extract the bit of interest
+                        result = (0x01 << (this.bit % 8)) & byteToMask;
+                    }
                 }
             }
         }

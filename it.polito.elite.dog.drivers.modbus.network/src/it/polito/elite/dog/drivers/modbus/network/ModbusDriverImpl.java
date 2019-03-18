@@ -816,8 +816,22 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 
             // if it is the last entry in the set remove the map entry
             if (serverRegisters.isEmpty())
+            {
                 this.gatewayAddress2Registers
                         .remove(register.getGatewayIdentifier());
+
+                // log
+                this.logger.debug("Stopping the poller thread for: {}",
+                        register.getGatewayIdentifier());
+                ModbusPoller pollerToStop = this.pollerPool
+                        .get(register.getGatewayIdentifier());
+                pollerToStop.setRunnable(false);
+
+                // log
+                this.logger.debug("Removing poller for: {}",
+                        register.getGatewayIdentifier());
+                this.pollerPool.remove(register.getGatewayIdentifier());
+            }
         }
 
     }
@@ -843,13 +857,32 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         .get(register.getGatewayIdentifier());
                 if (serverRegisters != null)
                 {
-                    // create the new entry
+                    // remove the entry
                     serverRegisters.remove(register);
 
                     // if it is the last entry in the set remove the map entry
                     if (serverRegisters.isEmpty())
+                    {
+
+                        // remove the entry
                         this.gatewayAddress2Registers
                                 .remove(register.getGatewayIdentifier());
+
+                        // stop / delete the poller as no register shall be read
+                        // from the given gateway address.
+
+                        // log
+                        this.logger.debug("Stopping the poller thread for: {}",
+                                register.getGatewayIdentifier());
+                        ModbusPoller pollerToStop = this.pollerPool
+                                .get(register.getGatewayIdentifier());
+                        pollerToStop.setRunnable(false);
+
+                        // log
+                        this.logger.debug("Removing poller for: {}",
+                                register.getGatewayIdentifier());
+                        this.pollerPool.remove(register.getGatewayIdentifier());
+                    }
                 }
             }
         }
