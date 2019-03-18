@@ -514,9 +514,6 @@ public abstract class ModbusDriverInstance extends
             BaseRegXlator baseXlator = new BaseRegXlator(dataSize, regTypeNew,
                     byteOrder, wordOrder, doubleWordOrder, bit);
 
-            // add the scale factor
-            baseXlator.setScaleFactor(scaleFactor);
-
             // set the register info xlator
             registerInfo.setXlator(baseXlator);
         }
@@ -527,13 +524,12 @@ public abstract class ModbusDriverInstance extends
             BaseRegXlator xlator = RegXlatorTypes
                     .createRegXlator(Integer.valueOf(registerType));
 
-            // the unit of measure
-            xlator.setUnitOfMeasure(unitOfMeasure);
-            xlator.setScaleFactor(scaleFactor);
-
             // set the register info xlator
             registerInfo.setXlator(xlator);
         }
+        
+        registerInfo.getXlator().setScaleFactor(scaleFactor);
+        registerInfo.getXlator().setUnitOfMeasure(unitOfMeasure);
 
         return registerInfo;
     }
