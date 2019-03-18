@@ -18,7 +18,7 @@
 package it.polito.elite.dog.drivers.modbus.network.info;
 
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
-import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlatorTypes;
 import net.wimpi.modbus.util.SerialParameters;
 
@@ -51,16 +51,12 @@ public class ModbusRegisterInfo
     private int address;
 
     // the register xlator
-    private RegXlator xlator;
+    private BaseRegXlator xlator;
 
     // the request timeout defined for the register
     private long requestTimeoutMillis;
     // the minimum gap between requests to the same register
     private long requestGapMillis;
-
-    // the register length
-    private int registerLenghtInBits;
-    private int registerLenghtInWords;
 
     /**
      * Empty class constructor, implements the bean pattern.
@@ -86,9 +82,6 @@ public class ModbusRegisterInfo
         // register
         this.xlator = RegXlatorTypes.createRegXlator(typeId);
 
-        // set the register size..
-        this.setRegisterLenghtInWords(this.xlator.getTypeSize() / 2);
-
     }
 
     /**
@@ -110,60 +103,6 @@ public class ModbusRegisterInfo
     public void setAddress(int address)
     {
         this.address = address;
-    }
-
-    /**
-     * Provide the register length in bits (integer number)
-     * 
-     * @return the registerLenghtInBits
-     */
-    public int getRegisterLenghtInBits()
-    {
-        return registerLenghtInBits;
-    }
-
-    /**
-     * Sets the register length in bits (integer number), updates the register
-     * length in words accordingly.
-     * 
-     * @param registerLenghtInBits
-     *            the registerLenghtInBits to set
-     */
-    public void setRegisterLenghtInBits(int registerLenghtInBits)
-    {
-        // fill the register length in bits
-        this.registerLenghtInBits = registerLenghtInBits;
-
-        // convert the bit amount to the corresponding word amount and store it
-        this.registerLenghtInWords = (int) Math
-                .ceil((double) this.registerLenghtInBits / 16);
-    }
-
-    /**
-     * Provides the register length in words(number of words required to
-     * represent the register length in bits, i.e. ceiling).
-     * 
-     * @return the registerLenghtInWords
-     */
-    public int getRegisterLenghtInWords()
-    {
-        return registerLenghtInWords;
-    }
-
-    /**
-     * Sets the register length in words. Updates the register length in bits
-     * accordingly.
-     * 
-     * @param registerLenghtInWords
-     *            the registerLenghtInWords to set
-     */
-    public void setRegisterLenghtInWords(int registerLenghtInWords)
-    {
-        // fill the register length in words
-        this.registerLenghtInWords = registerLenghtInWords;
-
-        // convert the word amount to bits
-        this.registerLenghtInBits = 16 * this.registerLenghtInWords;
     }
 
     /**
@@ -215,7 +154,7 @@ public class ModbusRegisterInfo
     /**
      * @return the xlator
      */
-    public RegXlator getXlator()
+    public BaseRegXlator getXlator()
     {
         return xlator;
     }
@@ -224,7 +163,7 @@ public class ModbusRegisterInfo
      * @param xlator
      *            the xlator to set
      */
-    public void setXlator(RegXlator xlator)
+    public void setXlator(BaseRegXlator xlator)
     {
         this.xlator = xlator;
     }
@@ -375,7 +314,9 @@ public class ModbusRegisterInfo
         return identifier;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see java.lang.Object#hashCode()
      */
     @Override
@@ -401,7 +342,9 @@ public class ModbusRegisterInfo
         return result;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see java.lang.Object#equals(java.lang.Object)
      */
     @Override

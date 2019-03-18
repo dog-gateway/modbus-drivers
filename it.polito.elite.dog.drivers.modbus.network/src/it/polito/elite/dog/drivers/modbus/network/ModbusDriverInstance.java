@@ -30,7 +30,6 @@ import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
-import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlatorTypes;
 import net.wimpi.modbus.util.SerialParameters;
 
@@ -525,7 +524,7 @@ public abstract class ModbusDriverInstance extends
         {
 
             // fill the translator properties
-            RegXlator xlator = RegXlatorTypes
+            BaseRegXlator xlator = RegXlatorTypes
                     .createRegXlator(Integer.valueOf(registerType));
 
             // the unit of measure

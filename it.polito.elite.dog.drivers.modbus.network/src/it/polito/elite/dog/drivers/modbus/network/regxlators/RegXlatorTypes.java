@@ -117,7 +117,7 @@ public class RegXlatorTypes
 	 * @param regXlator The translator class
 	 * @param description The translator description
 	 */
-	public static void addTranslator(int type, Class<? extends RegXlator> regXlator, String description)
+	public static void addTranslator(int type, Class<? extends BaseRegXlator> regXlator, String description)
 	{
 		types.put(type, new RegXlatorType(type, regXlator, description));
 	}
@@ -146,9 +146,9 @@ public class RegXlatorTypes
 	 * @param typeId the id of the {@link RegXlator} type to be created.
 	 * @return the new instance of {@link RegXlator}, specific for the given type.
 	 */
-	public static RegXlator createRegXlator(int typeId)
+	public static BaseRegXlator createRegXlator(int typeId)
 	{
-		RegXlator xlator = null;
+	    BaseRegXlator xlator = null;
 		RegXlatorType type = types.get(typeId);
 		
 		if(type!=null)

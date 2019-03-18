@@ -356,11 +356,9 @@ public class ModbusPoller extends Thread
                                 this.logger.debug(
                                         "Received -> " + responseAsString);
 
-                                // translate the readResponse
-                                register.getXlator().setReadResponse(response);
-
                                 this.logger.debug("Translated into -> "
-                                        + register.getXlator().getValue());
+                                        + register.getXlator()
+                                                .getValue(response));
 
                                 // dispatch the new message...
                                 // TODO: check if this shall be done
@@ -373,7 +371,7 @@ public class ModbusPoller extends Thread
                                     {
                                         driver.newMessageFromHouse(register,
                                                 register.getXlator()
-                                                        .getValue());
+                                                        .getValue(response));
                                     }
                                 }
 

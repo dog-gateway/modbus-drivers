@@ -20,7 +20,7 @@ package it.polito.elite.dog.drivers.modbus.network;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
-
+import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 import net.wimpi.modbus.Modbus;
 import net.wimpi.modbus.ModbusException;
 import net.wimpi.modbus.ModbusIOException;
@@ -486,9 +486,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * ModbusRegisterInfo)
      */
     @Override
-    public synchronized void read(ModbusRegisterInfo register,
+    public synchronized String read(ModbusRegisterInfo register,
             ModbusDriverInstance driver)
     {
+        String result = null;
+
         // prepare the TCP connection to the gateway offering access to the
         // given register
         MasterConnection modbusConnection = this.connectionPool
@@ -562,15 +564,23 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             String responseAsString = response.getHexMessage();
             this.logger.debug("Received -> " + responseAsString);
 
-            // translate the readResponse
-            register.getXlator().setReadResponse(response);
+            String responseValue = register.getXlator().getValue(response);
 
-            this.logger.debug(
-                    "Translated into -> " + register.getXlator().getValue());
+            if (responseValue != null && !responseValue.isEmpty())
+            {
 
-            // dispatch the new message...
-            driver.newMessageFromHouse(register,
-                    register.getXlator().getValue());
+                this.logger.debug("Translated into -> " + responseValue);
+
+                // dispatch the new message...
+                // retained for backward compatibility
+                if (driver != null)
+                {
+                    driver.newMessageFromHouse(register, responseValue);
+                }
+
+                // return the result
+                result = responseValue;
+            }
         }
         else
         {
@@ -582,6 +592,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     register.getGatewayIPAddress(), gwPort, variant,
                     register.getSerialParameters());
         }
+
+        return result;
     }
 
     /*
@@ -593,6 +605,32 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      */
     @Override
     public void write(ModbusRegisterInfo register, String commandValue)
+    {
+        this.writeValue(register, commandValue, null);
+    }
+
+    @Override
+    public void writeBit(ModbusRegisterInfo register, String commandValue,
+            String registerValue)
+    {
+        this.writeValue(register, commandValue, registerValue);
+    }
+
+    /**
+     * Write a given value to the given register. If a register value is
+     * specified and the register data size is BIT, write the bit value inside
+     * the register value and update the "actual" value on the device using the
+     * "modified" register value.
+     * 
+     * @param register
+     *            The register to write
+     * @param commandValue
+     *            The command value to write
+     * @param registerValue
+     *            The value of the register to "modify" for BIT registers.
+     */
+    private void writeValue(ModbusRegisterInfo register, String commandValue,
+            String registerValue)
     {
         // prepare the TCP connection to the gateway offering access to the
         // given register
@@ -623,8 +661,21 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             // successfully connected
             this.logger.debug("Successfully connected to the Modbus TCP Slave");
 
-            ModbusRequest writeRequest = register.getXlator()
-                    .getWriteRequest(register.getAddress(), commandValue);
+            ModbusRequest writeRequest = null;
+
+            if (registerValue != null
+                    && register.getXlator() instanceof BaseRegXlator)
+            {
+                writeRequest = ((BaseRegXlator) register.getXlator())
+                        .getWriteRequest(register.getAddress(), commandValue,
+                                registerValue);
+
+            }
+            else
+            {
+                writeRequest = register.getXlator()
+                        .getWriteRequest(register.getAddress(), commandValue);
+            }
             writeRequest.setUnitID(register.getSlaveId());
             writeRequest.setTransactionID(1);
 

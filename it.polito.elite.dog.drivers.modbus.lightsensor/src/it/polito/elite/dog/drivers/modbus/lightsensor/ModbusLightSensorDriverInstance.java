@@ -127,14 +127,14 @@ public class ModbusLightSensorDriverInstance extends ModbusDriverInstance
                     // log notification
                     this.logger.debug("Device: " + this.device.getDeviceId()
                             + " is notifying " + notificationName + " value:"
-                            + register.getXlator().getValue());
+                            + value);
                     // get the method
 
                     Method notify = ModbusLightSensorDriverInstance.class
                             .getDeclaredMethod(notifyMethod, Measure.class);
                     // invoke the method
                     notify.invoke(this, DecimalMeasure
-                            .valueOf(register.getXlator().getValue()));
+                            .valueOf(value));
                 }
                 catch (Exception e)
                 {

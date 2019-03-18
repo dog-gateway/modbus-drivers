@@ -13,6 +13,8 @@ package it.polito.elite.dog.drivers.modbus.network.regxlators;
 
 import java.nio.ByteBuffer;
 
+import org.osgi.service.log.Logger;
+
 import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.OrderEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
@@ -39,20 +41,33 @@ import net.wimpi.modbus.procimg.SimpleRegister;
  *
  * @since Mar 14, 2019
  */
-public class BaseRegXlator extends RegXlator
+public class BaseRegXlator
 {
     // the register size as enum
-    private DataSizeEnum registerSize;
+    protected DataSizeEnum registerSize;
     // the register type as enum
-    private RegisterTypeEnum registerType;
+    protected RegisterTypeEnum registerType;
     // the byte order as enum
-    private OrderEnum byteOrder;
+    protected OrderEnum byteOrder;
     // the word order as enum
-    private OrderEnum wordOrder;
+    protected OrderEnum wordOrder;
     // the double word order as enum
-    private OrderEnum doubleWordOrder;
+    protected OrderEnum doubleWordOrder;
     // the bit to extract (valid only for bit registers)
-    private int bit = -1; // default
+    protected int bit = -1; // default
+    
+    /**
+     * The scale factor with which the actual modbus register value shall be
+     * scaled before providing/setting the value into a
+     * {@link ModbusRegisterInfo} instance. By default it is equal to 1.0.
+     */
+    protected double scaleFactor = 1.0;
+    
+    /**
+     * The unit of Measure associated to the values translated by an instance of
+     * a {@link RegXlator} subclass.
+     */
+    protected String unitOfMeasure;
 
     // the endianness translation map for 64bit values
     // le = 0, be = 1
@@ -61,14 +76,17 @@ public class BaseRegXlator extends RegXlator
     // 0 1 2301
     // 1 0 1032
     // 1 1 0123
-    private int[][] endianess64bit = { { 3, 2, 1, 0 }, { 2, 3, 0, 1 },
+    protected int[][] endianess64bit = { { 3, 2, 1, 0 }, { 2, 3, 0, 1 },
             { 1, 0, 3, 2 }, { 0, 1, 2, 3 } };
     // the endianness translation map for 32bit values
     // le = 0, be = 1
     // we
     // 0 10
     // 1 01
-    private int[][] endianess32bit = { { 1, 0 }, { 0, 1 } };
+    protected int[][] endianess32bit = { { 1, 0 }, { 0, 1 } };
+    
+    // the class logger
+    public static Logger logger;
 
     /**
      * Create a new instance of regXlator given the register description
@@ -102,16 +120,6 @@ public class BaseRegXlator extends RegXlator
         this.wordOrder = wordOrder;
         this.doubleWordOrder = doubleWordOrder;
         this.bit = bit;
-
-        // fill the type size of the superclass
-        // backward compatibility, may be removed in future
-        this.typeSize = 2 * this.registerSize.getNRegisters();
-    }
-
-    @Override
-    public String getValue()
-    {
-        return this.getValue(this.readResponse);
     }
 
     /**
@@ -182,7 +190,6 @@ public class BaseRegXlator extends RegXlator
         return value;
     }
 
-    @Override
     public ModbusRequest getWriteRequest(int address, String value)
     {
         return this.getWriteRequest(address, value, null);
@@ -246,7 +253,6 @@ public class BaseRegXlator extends RegXlator
         return request;
     }
 
-    @Override
     public ModbusRequest getReadRequest(int address)
     {
         // the request, initially null
@@ -279,11 +285,60 @@ public class BaseRegXlator extends RegXlator
 
         }
 
-        // backward compatibility (will be removed)
-        this.readRequest = request;
-
         // return the request
         return request;
+    }
+
+    /**
+     * Provides the size of the register as a {@link DataSizeEnum} instance.
+     * 
+     * @return the registerSize
+     */
+    public DataSizeEnum getRegisterSize()
+    {
+        return registerSize;
+    }
+
+    /**
+     * Provides the type of register as a {@link RegisterTypeEnum} instance.
+     * 
+     * @return the registerType
+     */
+    public RegisterTypeEnum getRegisterType()
+    {
+        return registerType;
+    }
+    
+    /**
+     * @return the scaleFactor
+     */
+    public double getScaleFactor()
+    {
+        return scaleFactor;
+    }
+    
+    /**
+     * @return the unitOfMeasure
+     */
+    public String getUnitOfMeasure()
+    {
+        return unitOfMeasure;
+    }
+
+    /**
+     * @param scaleFactor the scaleFactor to set
+     */
+    public void setScaleFactor(double scaleFactor)
+    {
+        this.scaleFactor = scaleFactor;
+    }
+
+    /**
+     * @param unitOfMeasure the unitOfMeasure to set
+     */
+    public void setUnitOfMeasure(String unitOfMeasure)
+    {
+        this.unitOfMeasure = unitOfMeasure;
     }
 
     /*
@@ -340,8 +395,6 @@ public class BaseRegXlator extends RegXlator
             return false;
         if (Double.doubleToLongBits(scaleFactor) != Double
                 .doubleToLongBits(other.scaleFactor))
-            return false;
-        if (typeSize != other.typeSize)
             return false;
         if (unitOfMeasure == null)
         {

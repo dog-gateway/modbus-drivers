@@ -27,7 +27,7 @@ package it.polito.elite.dog.drivers.modbus.network.regxlators;
 public class RegXlatorType
 {
 	private int xlatorId;
-	private Class<? extends RegXlator> xlatorClass;
+	private Class<? extends BaseRegXlator> xlatorClass;
 	private String xlatorDescription;
 	
 	public static String logId = "[RegXlatorType]: ";
@@ -37,7 +37,7 @@ public class RegXlatorType
 	 * @param xlatorClass
 	 * @param xlatorDescription
 	 */
-	public RegXlatorType(int xlatorId, Class<? extends RegXlator> xlatorClass, String xlatorDescription)
+	public RegXlatorType(int xlatorId, Class<? extends BaseRegXlator> xlatorClass, String xlatorDescription)
 	{
 		this.xlatorId = xlatorId;
 		this.xlatorClass = xlatorClass;
@@ -73,7 +73,7 @@ public class RegXlatorType
 	 * @param xlatorClass
 	 *            the xlatorClass to set
 	 */
-	public void setXlatorClass(Class<? extends RegXlator> xlatorClass)
+	public void setXlatorClass(Class<? extends BaseRegXlator> xlatorClass)
 	{
 		this.xlatorClass = xlatorClass;
 	}
@@ -99,16 +99,16 @@ public class RegXlatorType
 	 * Creates a RegXlator instance depending of the type it represents
 	 * @return A RgeXlator instance...
 	 */
-	public RegXlator createRegXlator()
+	public BaseRegXlator createRegXlator()
 	{
-		RegXlator xlator = null;
+	    BaseRegXlator xlator = null;
 		try
 		{
-			xlator = (RegXlator) this.xlatorClass.newInstance();
+			xlator = (BaseRegXlator) this.xlatorClass.newInstance();
 		}
 		catch (Exception e)
 		{
-			RegXlator.logger.error("Unable to create the required RegXlator instance\n" + e);
+		    BaseRegXlator.logger.error("Unable to create the required RegXlator instance\n" + e);
 			
 		}
 		
