@@ -341,18 +341,26 @@ public abstract class ModbusDriverInstance extends
             catch (UnknownHostException uhe)
             {
                 // log the error
-                /*this.logger.error(
-                        "Error while parsing register-specific information: \n{}",
-                        uhe);*/
-                System.err.println("Error while parsing register-specific information:\n"+uhe);
+                /*
+                 * this.logger.error(
+                 * "Error while parsing register-specific information: \n{}",
+                 * uhe);
+                 */
+                System.err.println(
+                        "Error while parsing register-specific information:\n"
+                                + uhe);
             }
             catch (NumberFormatException nfe)
             {
                 // log the error
-                /*this.logger.error(
-                        "Error while parsing register-specific information: \n{}",
-                        nfe);*/
-                System.err.println("Error while parsing register-specific information:\n"+nfe);
+                /*
+                 * this.logger.error(
+                 * "Error while parsing register-specific information: \n{}",
+                 * nfe);
+                 */
+                System.err.println(
+                        "Error while parsing register-specific information:\n"
+                                + nfe);
             }
         }
 
@@ -399,18 +407,26 @@ public abstract class ModbusDriverInstance extends
             catch (UnknownHostException uhe)
             {
                 // log the error
-                /* this.logger.error(
-                        "Error while parsing register-specific information: \n{}",
-                        uhe);*/
-                System.err.println("Error while parsing register-specific information:\n"+uhe);
+                /*
+                 * this.logger.error(
+                 * "Error while parsing register-specific information: \n{}",
+                 * uhe);
+                 */
+                System.err.println(
+                        "Error while parsing register-specific information:\n"
+                                + uhe);
             }
             catch (NumberFormatException nfe)
             {
                 // log the error
-                /* this.logger.error(
-                        "Error while parsing register-specific information: \n{}",
-                        nfe);*/
-                System.err.println("Error while parsing register-specific information:\n"+nfe);
+                /*
+                 * this.logger.error(
+                 * "Error while parsing register-specific information: \n{}",
+                 * nfe);
+                 */
+                System.err.println(
+                        "Error while parsing register-specific information:\n"
+                                + nfe);
             }
         }
 
@@ -432,12 +448,6 @@ public abstract class ModbusDriverInstance extends
         // get the Modbus register scale factor if needed
         double scaleFactor = Double
                 .valueOf(params.get(ModbusInfo.SCALE_FACTOR).trim());
-        // get the request timeout
-        long requestTimeout = Long
-                .valueOf(params.get(ModbusInfo.REQUEST_TIMEOUT_MILLIS).trim());
-        // get the minimum request gap
-        long requestGap = Long
-                .valueOf(params.get(ModbusInfo.REQUEST_GAP_MILLIS).trim());
 
         // try parsing the register type as enum, if the result is null
         // than the register type is likley to be specified using the
@@ -469,15 +479,23 @@ public abstract class ModbusDriverInstance extends
         // fill the slave id
         registerInfo.setSlaveId(registerSlaveId);
 
-        // fill the request timeout
-        registerInfo.setRequestTimeoutMillis(requestTimeout);
-
-        // fill the request gap
-        registerInfo.setRequestGapMillis(requestGap);
-
         // support to v1.2 version of driver
         if (regTypeNew != null)
         {
+
+            // get the request timeout
+            long requestTimeout = Long.valueOf(
+                    params.get(ModbusInfo.REQUEST_TIMEOUT_MILLIS).trim());
+            // get the minimum request gap
+            long requestGap = Long
+                    .valueOf(params.get(ModbusInfo.REQUEST_GAP_MILLIS).trim());
+
+            // fill the request timeout
+            registerInfo.setRequestTimeoutMillis(requestTimeout);
+
+            // fill the request gap
+            registerInfo.setRequestGapMillis(requestGap);
+
             // the register data size
             DataSizeEnum dataSize = DataSizeEnum
                     .fromValue(params.get(ModbusInfo.DATA_SIZE).trim());

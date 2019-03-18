@@ -17,78 +17,24 @@
  */
 package it.polito.elite.dog.drivers.modbus.network.regxlators.specific;
 
-import java.util.Locale;
-
-import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
-import net.wimpi.modbus.msg.ModbusRequest;
-import net.wimpi.modbus.msg.ReadInputRegistersRequest;
-import net.wimpi.modbus.msg.ReadInputRegistersResponse;
+import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
+import it.polito.elite.dog.drivers.modbus.network.info.OrderEnum;
+import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 
 /**
+ * RegXlator for INT16 Input Registers (backward compatibility)
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
  * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  * 
  * @since Sep 17, 2013
  */
-public class RegXlator2ByteIntegerInput extends RegXlator
+public class RegXlator2ByteIntegerInput extends BaseRegXlator
 {
-	public RegXlator2ByteIntegerInput()
-	{
-		super();
-		this.typeSize = 2;
-	}
-	
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator#getValue
-	 * ()
-	 */
-	@Override
-	public String getValue()
-	{
-		String value = null;
-		if ((this.readResponse != null) && (this.readResponse instanceof ReadInputRegistersResponse))
-		{
-			// get the integer value contained in the received readResponse
-			int valueAsInt = ((ReadInputRegistersResponse) this.readResponse).getRegister(0).toShort();
-			
-			// format and scale the value according to the inner scaling
-			// parameter
-			value = String.format(Locale.US, "%f", valueAsInt * this.scaleFactor);
-			
-			// add the unit of measure if needed
-			if ((this.unitOfMeasure != null) && (!this.unitOfMeasure.isEmpty()))
-				value += " " + this.unitOfMeasure;
-		}
-		return value;
-	}
-	
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator#
-	 * getWriteRequest(int, java.lang.String)
-	 */
-	@Override
-	public ModbusRequest getWriteRequest(int address, String value)
-	{
-		// / not supported for input registers
-		return null;
-	}
-	
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator#
-	 * getReadRequest(int)
-	 */
-	@Override
-	public ModbusRequest getReadRequest(int address)
-	{
-		this.readRequest = new ReadInputRegistersRequest(address, this.typeSize / 2);
-		return this.readRequest;
-	}
-	
+    public RegXlator2ByteIntegerInput()
+    {
+        super(DataSizeEnum.INT16, RegisterTypeEnum.INPUT_REGISTER,
+                OrderEnum.BIG_ENDIAN, null, null, 0);
+    }
+
 }

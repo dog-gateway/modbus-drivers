@@ -11,19 +11,13 @@
  */
 package it.polito.elite.dog.drivers.modbus.network.regxlators.specific;
 
-import java.nio.ByteBuffer;
-import java.util.Locale;
-
-import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
-import net.wimpi.modbus.msg.ModbusRequest;
-import net.wimpi.modbus.msg.ReadMultipleRegistersRequest;
-import net.wimpi.modbus.msg.ReadMultipleRegistersResponse;
-import net.wimpi.modbus.msg.WriteMultipleRegistersRequest;
-import net.wimpi.modbus.procimg.Register;
-import net.wimpi.modbus.procimg.SimpleRegister;
+import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
+import it.polito.elite.dog.drivers.modbus.network.info.OrderEnum;
+import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 
 /**
- * Handles translation of 4 bytes integer values...
+ * RegXlator for LITTLE ENDIAN INT32 Holding Registers (backward compatibility)
  * 
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>, Politecnico
  *         di Torino
@@ -32,108 +26,12 @@ import net.wimpi.modbus.procimg.SimpleRegister;
  * 
  * @since Feb 27, 2012
  */
-public class RegXlator4ByteIntegerHolding extends RegXlator
+public class RegXlator4ByteIntegerHolding extends BaseRegXlator
 {
-	
-	public RegXlator4ByteIntegerHolding()
-	{
-		super();
-		this.typeSize = 4;
-	}
-	
-	/**
-	 * Translates a couple of 2-byte registers into a 4-byte register and
-	 * extracts the corresponding integer value
-	 * 
-	 * TODO: check if it works...
-	 * 
-	 * @param registers
-	 * @return
-	 */
-	public int fromRegister(Register[] registers)
-	{
-		byte bytes[] = new byte[this.typeSize];
-		/*
-		for (int j = 0; j < registers.length; j++)
-		{
-			Register cRegister = registers[j];
-			byte registerBytes[] = cRegister.toBytes();
-			for (int k = 0; k < registerBytes.length; k++)
-			{
-				bytes[j * registerBytes.length + k] = registerBytes[k];
-			}
-		}
-		*/
-		
-		//swap bytes
-		byte highWord[] = registers[1].toBytes();
-		byte lowWord[] = registers[0].toBytes();
-		
-		//copy the two byte in the response byte array
-		bytes[1] = highWord[1];
-		bytes[0] = highWord[0];
-		bytes[3] = lowWord[1];
-		bytes[2] = lowWord[0];
-		
-		//wrap the byte array
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
-		
-		return buffer.getInt();
-	}
-	
-	/**
-	 * Translates an integer value into a couple of 2-byte registers
-	 * 
-	 * @param value
-	 * @return
-	 */
-	public Register[] toRegister(int value)
-	{
-		byte bytes[] = new byte[this.typeSize];
-		
-		ByteBuffer buffer = ByteBuffer.wrap(bytes);
-		
-		buffer.putInt(value);
-		
-		Register registers[] = new SimpleRegister[2];
-		registers[1] = new SimpleRegister(bytes[0], bytes[1]);
-		registers[0] = new SimpleRegister(bytes[2], bytes[3]);
-		return registers;
-	}
-	
-	@Override
-	public String getValue()
-	{
-		String value = null;
-		if ((this.readResponse != null)&&(this.readResponse instanceof ReadMultipleRegistersResponse))
-		{
-			//get the integer value contained in the received readResponse
-			int valueAsInt = this.fromRegister(((ReadMultipleRegistersResponse) this.readResponse).getRegisters());
-			
-			//format and scale the value according to the inner scaling parameter
-			value = String.format(Locale.US,"%f", valueAsInt*this.scaleFactor);
-			
-			//add the unit of measure if needed
-			if ((this.unitOfMeasure != null) && (!this.unitOfMeasure.isEmpty()))
-				value += " " + this.unitOfMeasure;
-		}
-		return value;
-	}
 
-	@Override
-	public ModbusRequest getWriteRequest(int address, String value)
-	{
-		// Set the given value as writeRequest value
-		Register registers[] = this.toRegister((int)(Double.valueOf(value)*(1/this.scaleFactor)));
-		this.writeRequest = new WriteMultipleRegistersRequest(address, registers);
-		((WriteMultipleRegistersRequest)this.writeRequest).setReference(address);
-		return this.writeRequest;
-	}
-
-	@Override
-	public ModbusRequest getReadRequest(int address)
-	{
-		this.readRequest = new ReadMultipleRegistersRequest(address, this.typeSize/2);
-		return this.readRequest;
-	}
+    public RegXlator4ByteIntegerHolding()
+    {
+        super(DataSizeEnum.INT32, RegisterTypeEnum.HOLDING_REGISTER,
+                OrderEnum.BIG_ENDIAN, OrderEnum.LITTLE_ENDIAN, null, 0);
+    }
 }

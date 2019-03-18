@@ -17,57 +17,25 @@
  */
 package it.polito.elite.dog.drivers.modbus.network.regxlators.specific;
 
-import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator;
-import net.wimpi.modbus.msg.ModbusRequest;
-import net.wimpi.modbus.msg.ReadCoilsRequest;
-import net.wimpi.modbus.msg.ReadCoilsResponse;
-import net.wimpi.modbus.msg.WriteCoilRequest;
+import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
+import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 
 /**
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
- * @see <a href="http://elite.polito.it">http://elite.polito.it</a> 
+ * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  *
  * @since Feb 28, 2012
  */
-public class RegXlatorBooleanCoil extends RegXlator
+public class RegXlatorBooleanCoil extends BaseRegXlator
 {
-	
-	/**
-	 * 
-	 */
-	public RegXlatorBooleanCoil()
-	{
-		super();
-		this.typeSize = 0;
-	}
-	
-	/* (non-Javadoc)
-	 * @see it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlator#getValue()
-	 */
-	@Override
-	public String getValue()
-	{
-		Boolean value = null;
-		
-		if((this.readResponse!=null)&&(this.readResponse instanceof ReadCoilsResponse))
-		{
-			 value =((ReadCoilsResponse)this.readResponse).getCoilStatus(0);
-		}
-		return (value!=null)?value.toString():null;
-	}
 
-	@Override
-	public ModbusRequest getWriteRequest(int address, String value)
-	{
-		this.writeRequest = new WriteCoilRequest(address, Boolean.parseBoolean(value));
-		return this.writeRequest;
-	}
-
-	@Override
-	public ModbusRequest getReadRequest(int address)
-	{
-		this.readRequest = new ReadCoilsRequest(address, 1);
-		return this.readRequest;
-	}
-	
+    /**
+     * 
+     */
+    public RegXlatorBooleanCoil()
+    {
+        super(DataSizeEnum.BIT, RegisterTypeEnum.COIL, null, null, null, 0);
+        // this.typeSize = 0;
+    }
 }
