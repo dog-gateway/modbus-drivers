@@ -604,16 +604,16 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * ModbusRegisterInfo, java.lang.String)
      */
     @Override
-    public void write(ModbusRegisterInfo register, String commandValue)
+    public boolean write(ModbusRegisterInfo register, String commandValue)
     {
-        this.writeValue(register, commandValue, null);
+        return this.writeValue(register, commandValue, null);
     }
 
     @Override
-    public void writeBit(ModbusRegisterInfo register, String commandValue,
+    public boolean writeBit(ModbusRegisterInfo register, String commandValue,
             String registerValue)
     {
-        this.writeValue(register, commandValue, registerValue);
+        return this.writeValue(register, commandValue, registerValue);
     }
 
     /**
@@ -629,9 +629,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * @param registerValue
      *            The value of the register to "modify" for BIT registers.
      */
-    private void writeValue(ModbusRegisterInfo register, String commandValue,
+    private boolean writeValue(ModbusRegisterInfo register, String commandValue,
             String registerValue)
     {
+        boolean written = false;
+
         // prepare the TCP connection to the gateway offering access to the
         // given register
         MasterConnection modbusConnection = this.connectionPool
@@ -687,6 +689,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             try
             {
                 transaction.execute();
+                written = true;
             }
             catch (ModbusIOException e)
             {
@@ -719,6 +722,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     register.getGatewayIPAddress(), gwPort, variant,
                     register.getSerialParameters());
         }
+
+        return written;
     }
 
     /*

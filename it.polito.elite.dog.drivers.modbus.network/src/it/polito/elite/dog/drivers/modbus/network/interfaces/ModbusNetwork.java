@@ -45,9 +45,10 @@ public interface ModbusNetwork
      *            the register unique identifier.
      * @param commandValue
      *            the command value to send.
+     * @return true if the command was successfully written, false otherwise.
      */
-    public void write(ModbusRegisterInfo register, String commandValue);
-    
+    public boolean write(ModbusRegisterInfo register, String commandValue);
+
     /**
      * Writes a given command to a given Modbus register
      * 
@@ -55,8 +56,11 @@ public interface ModbusNetwork
      *            the register unique identifier.
      * @param commandValue
      *            the command value to send.
+     * 
+     * @return true if the command was successfully written, false otherwise.
      */
-    public void writeBit(ModbusRegisterInfo register, String commandValue, String currentRegisterValue);
+    public boolean writeBit(ModbusRegisterInfo register, String commandValue,
+            String currentRegisterValue);
 
     /**
      * Adds a new device-specific driver for the given register
