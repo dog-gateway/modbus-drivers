@@ -90,7 +90,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     private Logger logger;
     // the register to driver map
     // TODO: extend to allow multiple driver per register
-    private Map<ModbusRegisterInfo, ModbusDriverInstance> register2Driver;
+    private Map<ModbusRegisterInfo, Set<ModbusDriverInstance>> register2Driver;
     // the inverse map
     private Map<ModbusDriverInstance, Set<ModbusRegisterInfo>> driver2Register;
     // the modbus network-level-gateway-to-register association for polling
@@ -178,7 +178,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         this.trialsDone = 0;
 
         // create the register to driver map
-        this.register2Driver = new ConcurrentHashMap<ModbusRegisterInfo, ModbusDriverInstance>();
+        this.register2Driver = new ConcurrentHashMap<ModbusRegisterInfo, Set<ModbusDriverInstance>>();
 
         // create the driver to register map
         this.driver2Register = new ConcurrentHashMap<ModbusDriverInstance, Set<ModbusRegisterInfo>>();
@@ -434,7 +434,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     /**
      * @return the register2Driver
      */
-    public Map<ModbusRegisterInfo, ModbusDriverInstance> getRegister2Driver()
+    public Map<ModbusRegisterInfo, Set<ModbusDriverInstance>> getRegister2Driver()
     {
         return register2Driver;
     }
@@ -486,7 +486,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * ModbusRegisterInfo)
      */
     @Override
-    public synchronized void read(ModbusRegisterInfo register)
+    public synchronized void read(ModbusRegisterInfo register,
+            ModbusDriverInstance driver)
     {
         // prepare the TCP connection to the gateway offering access to the
         // given register
@@ -568,7 +569,6 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     "Translated into -> " + register.getXlator().getValue());
 
             // dispatch the new message...
-            ModbusDriverInstance driver = this.register2Driver.get(register);
             driver.newMessageFromHouse(register,
                     register.getXlator().getValue());
         }
@@ -708,8 +708,16 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 register.getAddress(), register.getGatewayIdentifier());
 
         // adds a given register-driver association
-        // TODO: check if any register can be associated to more than one driver
-        this.register2Driver.put(register, driver);
+        Set<ModbusDriverInstance> drivers = this.register2Driver.get(register);
+
+        // create the set if not yet existing
+        if (drivers == null)
+        {
+            drivers = new HashSet<ModbusDriverInstance>();
+            this.register2Driver.put(register, drivers);
+        }
+        // add the driver
+        drivers.add(driver);
 
         // fills the reverse map
         Set<ModbusRegisterInfo> driverRegisters = this.driver2Register
@@ -789,48 +797,60 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * ModbusRegisterInfo)
      */
     @Override
-    public void removeDriver(ModbusRegisterInfo register)
+    public void removeDriver(ModbusRegisterInfo register,
+            ModbusDriverInstance driver)
     {
-        // removes a given register-driver association
-        ModbusDriverInstance drv = this.register2Driver.remove(register);
+        // get the driver set for the register
+        Set<ModbusDriverInstance> drivers = this.register2Driver.get(register);
 
-        if (drv != null)
+        if (drivers != null)
         {
-            // removes the register from the corresponding set
-            Set<ModbusRegisterInfo> driverRegisters = this.driver2Register
-                    .get(drv);
-            driverRegisters.remove(register);
-
-            // if after removal the set is empty, removes the reverse map entry
-            if (driverRegisters.isEmpty())
-                this.driver2Register.remove(drv);
-        }
-
-        // remove the register entry from the server to register map
-        Set<ModbusRegisterInfo> serverRegisters = this.gatewayAddress2Registers
-                .get(register.getGatewayIdentifier());
-        if (serverRegisters != null)
-        {
-            // create the new entry
-            serverRegisters.remove(register);
-
-            // if it is the last entry in the set remove the map entry
-            if (serverRegisters.isEmpty())
+            // removes a given register-driver association
+            if (drivers.remove(driver))
             {
-                this.gatewayAddress2Registers
-                        .remove(register.getGatewayIdentifier());
+                // if the driver was the last, remove the entry
+                if (drivers.size() == 0)
+                {
+                    this.register2Driver.remove(register);
+                }
 
-                // log
-                this.logger.debug("Stopping the poller thread for: {}",
-                        register.getGatewayIdentifier());
-                ModbusPoller pollerToStop = this.pollerPool
-                        .get(register.getGatewayIdentifier());
-                pollerToStop.setRunnable(false);
+                // removes the register from the corresponding set
+                Set<ModbusRegisterInfo> driverRegisters = this.driver2Register
+                        .get(driver);
+                driverRegisters.remove(register);
 
-                // log
-                this.logger.debug("Removing poller for: {}",
-                        register.getGatewayIdentifier());
-                this.pollerPool.remove(register.getGatewayIdentifier());
+                // if after removal the set is empty, removes the reverse map
+                // entry
+                if (driverRegisters.isEmpty())
+                    this.driver2Register.remove(driver);
+            }
+
+            // remove the register entry from the server to register map
+            Set<ModbusRegisterInfo> serverRegisters = this.gatewayAddress2Registers
+                    .get(register.getGatewayIdentifier());
+            if (serverRegisters != null)
+            {
+                // create the new entry
+                serverRegisters.remove(register);
+
+                // if it is the last entry in the set remove the map entry
+                if (serverRegisters.isEmpty())
+                {
+                    this.gatewayAddress2Registers
+                            .remove(register.getGatewayIdentifier());
+
+                    // log
+                    this.logger.debug("Stopping the poller thread for: {}",
+                            register.getGatewayIdentifier());
+                    ModbusPoller pollerToStop = this.pollerPool
+                            .get(register.getGatewayIdentifier());
+                    pollerToStop.setRunnable(false);
+
+                    // log
+                    this.logger.debug("Removing poller for: {}",
+                            register.getGatewayIdentifier());
+                    this.pollerPool.remove(register.getGatewayIdentifier());
+                }
             }
         }
 

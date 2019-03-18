@@ -256,7 +256,7 @@ public abstract class ModbusDriverInstance extends
     {
         // for each datapoint registered with this driver, call the read command
         for (ModbusRegisterInfo register : this.managedRegisters)
-            this.network.read(register);
+            this.network.read(register, this);
     }
 
     /**

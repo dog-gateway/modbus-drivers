@@ -375,9 +375,7 @@ public class ModbusRegisterInfo
         return identifier;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see java.lang.Object#hashCode()
      */
     @Override
@@ -392,72 +390,68 @@ public class ModbusRegisterInfo
                 + ((gatewayPort == null) ? 0 : gatewayPort.hashCode());
         result = prime * result
                 + ((gatewayProtocol == null) ? 0 : gatewayProtocol.hashCode());
+        result = prime * result
+                + (int) (requestGapMillis ^ (requestGapMillis >>> 32));
+        result = prime * result
+                + (int) (requestTimeoutMillis ^ (requestTimeoutMillis >>> 32));
+        result = prime * result + ((serialParameters == null) ? 0
+                : serialParameters.hashCode());
         result = prime * result + slaveId;
+        result = prime * result + ((xlator == null) ? 0 : xlator.hashCode());
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see java.lang.Object#equals(java.lang.Object)
      */
     @Override
     public boolean equals(Object obj)
     {
         if (this == obj)
-        {
             return true;
-        }
         if (obj == null)
-        {
             return false;
-        }
-        if (!(obj instanceof ModbusRegisterInfo))
-        {
+        if (getClass() != obj.getClass())
             return false;
-        }
         ModbusRegisterInfo other = (ModbusRegisterInfo) obj;
         if (address != other.address)
-        {
             return false;
-        }
         if (gatewayIPAddress == null)
         {
             if (other.gatewayIPAddress != null)
-            {
                 return false;
-            }
         }
         else if (!gatewayIPAddress.equals(other.gatewayIPAddress))
-        {
             return false;
-        }
         if (gatewayPort == null)
         {
             if (other.gatewayPort != null)
-            {
                 return false;
-            }
         }
         else if (!gatewayPort.equals(other.gatewayPort))
-        {
             return false;
-        }
-        if (gatewayProtocol == null)
+        if (gatewayProtocol != other.gatewayProtocol)
+            return false;
+        if (requestGapMillis != other.requestGapMillis)
+            return false;
+        if (requestTimeoutMillis != other.requestTimeoutMillis)
+            return false;
+        if (serialParameters == null)
         {
-            if (other.gatewayProtocol != null)
-            {
+            if (other.serialParameters != null)
                 return false;
-            }
         }
-        else if (!gatewayProtocol.equals(other.gatewayProtocol))
-        {
+        else if (!serialParameters.equals(other.serialParameters))
             return false;
-        }
         if (slaveId != other.slaveId)
-        {
             return false;
+        if (xlator == null)
+        {
+            if (other.xlator != null)
+                return false;
         }
+        else if (!xlator.equals(other.xlator))
+            return false;
         return true;
     }
 

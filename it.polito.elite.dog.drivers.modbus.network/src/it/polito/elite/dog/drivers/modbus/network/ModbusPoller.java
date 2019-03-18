@@ -363,12 +363,18 @@ public class ModbusPoller extends Thread
                                         + register.getXlator().getValue());
 
                                 // dispatch the new message...
-                                ModbusDriverInstance driver = this.driver
+                                // TODO: check if this shall be done
+                                // asynchronously
+                                Set<ModbusDriverInstance> drivers = this.driver
                                         .getRegister2Driver().get(register);
-                                if (driver != null)
+                                if (drivers != null)
                                 {
-                                    driver.newMessageFromHouse(register,
-                                            register.getXlator().getValue());
+                                    for (ModbusDriverInstance driver : drivers)
+                                    {
+                                        driver.newMessageFromHouse(register,
+                                                register.getXlator()
+                                                        .getValue());
+                                    }
                                 }
 
                                 // successful read operation!

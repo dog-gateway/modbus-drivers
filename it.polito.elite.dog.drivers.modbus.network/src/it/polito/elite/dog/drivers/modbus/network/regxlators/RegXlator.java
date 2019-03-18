@@ -149,5 +149,52 @@ public abstract class RegXlator
 	 * @return the readRequest
 	 */
 	public abstract ModbusRequest getReadRequest(int address);
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode()
+    {
+        final int prime = 31;
+        int result = 1;
+        long temp;
+        temp = Double.doubleToLongBits(scaleFactor);
+        result = prime * result + (int) (temp ^ (temp >>> 32));
+        result = prime * result + typeSize;
+        result = prime * result
+                + ((unitOfMeasure == null) ? 0 : unitOfMeasure.hashCode());
+        return result;
+    }
+
+    /* (non-Javadoc)
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        RegXlator other = (RegXlator) obj;
+        if (Double.doubleToLongBits(scaleFactor) != Double
+                .doubleToLongBits(other.scaleFactor))
+            return false;
+        if (typeSize != other.typeSize)
+            return false;
+        if (unitOfMeasure == null)
+        {
+            if (other.unitOfMeasure != null)
+                return false;
+        }
+        else if (!unitOfMeasure.equals(other.unitOfMeasure))
+            return false;
+        return true;
+    }
+	
+	
 	
 }

@@ -75,7 +75,7 @@ public class ModbusOnOffDeviceDriverInstance extends ModbusDriverInstance
         // read the initial state (should be just one...)
         for (ModbusRegisterInfo register : this.register2Notification.keySet())
         {
-            this.network.read(register);
+            this.network.read(register, this);
         }
     }
 

@@ -20,53 +20,59 @@ package it.polito.elite.dog.drivers.modbus.network.interfaces;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 
-
-
 /**
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
- * @see <a href="http://elite.polito.it">http://elite.polito.it</a> 
+ * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  *
  * @since Jan 18, 2012
  */
 public interface ModbusNetwork
 {
-	/**
-	 * Read the current value associated to the given register...
-	 * 
-	 * @param register
-	 *            the register unique identifier.
-	 */
-	public void read(ModbusRegisterInfo register);
-	
-	/**
-	 * Writes a given command to a given Modbus register
-	 * 
-	 * @param register
-	 *            the register unique identifier.
-	 * @param commandValue
-	 *            the command value to send.
-	 */
-	public void write(ModbusRegisterInfo register, String commandValue);
-	
-	/**
-	 * Adds a new device-specific driver for the given register
-	 * @param register
-	 *            the register unique identifier.
-	 * @param driver the {@link ModbusDriverInstance} instance to add.
-	 */
-	public void addDriver(ModbusRegisterInfo register, ModbusDriverInstance driver);
-	
-	/**
-	 * Removes a device-specific driver for the given register
-	 * @param register
-	 *            the register unique identifier.
-	 */
-	public void removeDriver(ModbusRegisterInfo register);
-	
-	/**
-	 * Removes the driver-register associations for the given driver. To be called when a specific driver disconnects
-	 * 
-	 * @param datapoint
-	 */
-	public void removeDriver(ModbusDriverInstance driver);
+    /**
+     * Read the current value associated to the given register...
+     * 
+     * @param register
+     *            the register unique identifier.
+     */
+    public void read(ModbusRegisterInfo register, ModbusDriverInstance driver);
+
+    /**
+     * Writes a given command to a given Modbus register
+     * 
+     * @param register
+     *            the register unique identifier.
+     * @param commandValue
+     *            the command value to send.
+     */
+    public void write(ModbusRegisterInfo register, String commandValue);
+
+    /**
+     * Adds a new device-specific driver for the given register
+     * 
+     * @param register
+     *            the register unique identifier.
+     * @param driver
+     *            the {@link ModbusDriverInstance} instance to add.
+     */
+    public void addDriver(ModbusRegisterInfo register,
+            ModbusDriverInstance driver);
+
+    /**
+     * Removes a device-specific driver for the given register
+     * 
+     * @param register
+     *            the register unique identifier.
+     * @param driver
+     *            the {@link ModbusDriverInstance} instance to remove.
+     */
+    public void removeDriver(ModbusRegisterInfo register,
+            ModbusDriverInstance driver);
+
+    /**
+     * Removes the driver-register associations for the given driver. To be
+     * called when a specific driver disconnects
+     * 
+     * @param datapoint
+     */
+    public void removeDriver(ModbusDriverInstance driver);
 }

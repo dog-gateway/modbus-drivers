@@ -286,6 +286,73 @@ public class BaseRegXlator extends RegXlator
         return request;
     }
 
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#hashCode()
+     */
+    @Override
+    public int hashCode()
+    {
+        final int prime = 31;
+        int result = 1;
+        result = prime * result + bit;
+        result = prime * result
+                + ((byteOrder == null) ? 0 : byteOrder.hashCode());
+        result = prime * result
+                + ((doubleWordOrder == null) ? 0 : doubleWordOrder.hashCode());
+        result = prime * result
+                + ((registerSize == null) ? 0 : registerSize.hashCode());
+        result = prime * result
+                + ((registerType == null) ? 0 : registerType.hashCode());
+        result = prime * result
+                + ((wordOrder == null) ? 0 : wordOrder.hashCode());
+        result = prime * result + super.hashCode();
+        return result;
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
+     * @see java.lang.Object#equals(java.lang.Object)
+     */
+    @Override
+    public boolean equals(Object obj)
+    {
+        if (this == obj)
+            return true;
+        if (obj == null)
+            return false;
+        if (getClass() != obj.getClass())
+            return false;
+        BaseRegXlator other = (BaseRegXlator) obj;
+        if (bit != other.bit)
+            return false;
+        if (byteOrder != other.byteOrder)
+            return false;
+        if (doubleWordOrder != other.doubleWordOrder)
+            return false;
+        if (registerSize != other.registerSize)
+            return false;
+        if (registerType != other.registerType)
+            return false;
+        if (wordOrder != other.wordOrder)
+            return false;
+        if (Double.doubleToLongBits(scaleFactor) != Double
+                .doubleToLongBits(other.scaleFactor))
+            return false;
+        if (typeSize != other.typeSize)
+            return false;
+        if (unitOfMeasure == null)
+        {
+            if (other.unitOfMeasure != null)
+                return false;
+        }
+        else if (!unitOfMeasure.equals(other.unitOfMeasure))
+            return false;
+        return true;
+    }
+
     // ------- PRIVATE METHODS ------------
 
     /**
