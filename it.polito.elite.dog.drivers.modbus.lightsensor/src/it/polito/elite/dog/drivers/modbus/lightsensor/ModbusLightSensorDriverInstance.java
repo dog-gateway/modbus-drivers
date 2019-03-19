@@ -102,9 +102,9 @@ public class ModbusLightSensorDriverInstance extends ModbusDriverInstance
      * .ModbusRegisterInfo, java.lang.String)
      */
     @Override
-    public void newMessageFromHouse(ModbusRegisterInfo register, String value)
+    public void newMessageFromHouse(ModbusRegisterInfo register, Object value)
     {
-        if (value != null)
+        if (value != null && value instanceof DecimalMeasure)
         {
             // gets the corresponding notification set...
             Set<CNParameters> notificationInfos = this.register2Notification
@@ -133,8 +133,7 @@ public class ModbusLightSensorDriverInstance extends ModbusDriverInstance
                     Method notify = ModbusLightSensorDriverInstance.class
                             .getDeclaredMethod(notifyMethod, Measure.class);
                     // invoke the method
-                    notify.invoke(this, DecimalMeasure
-                            .valueOf(value));
+                    notify.invoke(this, value);
                 }
                 catch (Exception e)
                 {

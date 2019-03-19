@@ -143,7 +143,7 @@ public abstract class ModbusDriverInstance extends
      * @param string
      */
     public abstract void newMessageFromHouse(ModbusRegisterInfo dataPointInfo,
-            String string);
+            Object value);
 
     /*
      * (non-Javadoc)

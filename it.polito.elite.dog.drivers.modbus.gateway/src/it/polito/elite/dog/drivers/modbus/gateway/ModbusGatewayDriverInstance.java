@@ -70,7 +70,7 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
 
     @Override
     public void newMessageFromHouse(ModbusRegisterInfo registerInfo,
-            String string)
+            Object string)
     {
         // currently no functionalities are associated to modbus gateways
         // therefore they do not use any datapoint and they do not listen to the

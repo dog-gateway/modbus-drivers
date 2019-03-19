@@ -12,7 +12,7 @@
 package it.polito.elite.dog.drivers.modbus.network.regxlators;
 
 import java.nio.ByteBuffer;
-
+import javax.measure.DecimalMeasure;
 import org.osgi.service.log.Logger;
 
 import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
@@ -133,10 +133,10 @@ public class BaseRegXlator
      * @return The value of the response as a number with an attached unit of
      *         measure, if specified as a property of this regXkator
      */
-    public String getValue(ModbusResponse response)
+    public Object getValue(ModbusResponse response)
     {
         // the value as a String
-        String value = null;
+        Object value = null;
 
         // check if a response is available for extracting the value
         if (response != null)
@@ -192,7 +192,7 @@ public class BaseRegXlator
         return value;
     }
 
-    public ModbusRequest getWriteRequest(int address, String value)
+    public ModbusRequest getWriteRequest(int address, Object value)
     {
         return this.getWriteRequest(address, value, null);
     }
@@ -220,8 +220,8 @@ public class BaseRegXlator
      *            parameter of this method. Only used in BIT registers.
      * @return The write request to use on the modbus communication stack.
      */
-    public ModbusRequest getWriteRequest(int address, String value,
-            String oldValue)
+    public ModbusRequest getWriteRequest(int address, Object value,
+            Object oldValue)
     {
         // the request, initially null
         ModbusRequest request = null;
@@ -230,7 +230,16 @@ public class BaseRegXlator
         {
             case COIL:
             {
-                request = new WriteCoilRequest(address, Boolean.valueOf(value));
+                if (value instanceof Boolean)
+                {
+                    request = new WriteCoilRequest(address, (Boolean) value);
+                }
+                else
+                {
+                    this.logger.error(
+                            "Attempt to set a coil with a non boolean value: {}",
+                            value);
+                }
                 break;
             }
             case DISCRETE_INPUT:
@@ -440,7 +449,7 @@ public class BaseRegXlator
      *            The response to interpret.
      * @return The value of the response.
      */
-    private String getHoldingRegisterValue(
+    private Object getHoldingRegisterValue(
             ReadMultipleRegistersResponse readResponse)
     {
         return this.getInputHoldingValue(readResponse.getRegisters());
@@ -454,7 +463,7 @@ public class BaseRegXlator
      *            The response to interpret.
      * @return The value encoded in the response
      */
-    private String getInputRegisterValue(
+    private Object getInputRegisterValue(
             ReadInputRegistersResponse readResponse)
     {
         return this.getInputHoldingValue(readResponse.getRegisters());
@@ -467,9 +476,9 @@ public class BaseRegXlator
      *            The response to interpret.
      * @return The value encoded in the response.
      */
-    private String getCoilValue(ReadCoilsResponse readResponse)
+    private Object getCoilValue(ReadCoilsResponse readResponse)
     {
-        return "" + readResponse.getCoilStatus(0);
+        return readResponse.getCoilStatus(0);
     }
 
     /**
@@ -480,11 +489,11 @@ public class BaseRegXlator
      *            The response to interpret.
      * @return The value encoded in the response.
      */
-    private String getInputDiscreteValue(
+    private Object getInputDiscreteValue(
             ReadInputDiscretesResponse readResponse)
     {
         // TODO Auto-generated method stub
-        return "" + readResponse.getDiscreteStatus(this.bit);
+        return readResponse.getDiscreteStatus(this.bit);
     }
 
     /**
@@ -497,10 +506,10 @@ public class BaseRegXlator
      * @return The interpreted value as a String composed by a number and a unit
      *         of measure.
      */
-    private String getInputHoldingValue(InputRegister[] registers)
+    private Object getInputHoldingValue(InputRegister[] registers)
     {
         // the parsing result
-        String value = null;
+        Object value = null;
 
         // extract the holding register response
         Number scaledValue = this.fromRegisters(registers);
@@ -516,14 +525,14 @@ public class BaseRegXlator
                 scaledValue = scaledValue.doubleValue() * this.scaleFactor;
             }
 
-            value = "" + scaledValue
+            value = DecimalMeasure.valueOf(scaledValue
                     + ((this.unitOfMeasure != null) ? " " + this.unitOfMeasure
-                            : "");
+                            : ""));
         }
         else
         {
             // interpret BIT registers as boolean
-            value = "" + (scaledValue.shortValue() != 0 ? true : false);
+            value = (scaledValue.shortValue() != 0 ? true : false);
         }
 
         return value;
@@ -711,7 +720,7 @@ public class BaseRegXlator
      * @return The corresponding registers in the order defined by this
      *         regXlator.
      */
-    private Register[] toRegisters(String value, String oldValue)
+    private Register[] toRegisters(Object value, Object oldValue)
     {
         // the bytes to include in the registers
         byte[] registerBytes = new byte[this.registerSize.getNBits()];
@@ -724,58 +733,78 @@ public class BaseRegXlator
         {
             case BIT:
             {
-                // mask value an only change the bit-th bit
+                if (value instanceof Boolean && oldValue instanceof Integer)
+                {
+                    // mask value an only change the bit-th bit
 
-                // create the bitmask
-                int bitmask = ~(0x00000001 << this.bit);
-                // convert the value to int
-                int valueInt = Integer.valueOf(oldValue.trim());
+                    // create the bitmask
+                    int bitmask = ~(0x00000001 << this.bit);
+                    // convert the value to int
+                    int valueInt = (Integer) oldValue;
 
-                int maskedValue = valueInt & bitmask;
+                    int maskedValue = valueInt & bitmask;
 
-                // only works for 16bit sizes, shall be extended for larger
-                // sizes
-                buffer.putShort((short) (maskedValue
-                        + (Boolean.valueOf(value.trim()) ? Math.pow(2, this.bit)
-                                : 0)));
+                    // only works for 16bit sizes, shall be extended for larger
+                    // sizes
+                    buffer.putShort((short) (maskedValue
+                            + (((Boolean) value) ? Math.pow(2, this.bit) : 0)));
+                }
                 break;
+
             }
             case FLOAT32:
             {
-                buffer.putFloat(Float.valueOf(value.trim()));
+                if (value instanceof Number)
+                {
+                    buffer.putFloat(((Number) value).floatValue());
+                }
                 break;
             }
             case FLOAT64:
             {
-                buffer.putDouble(Double.valueOf(value.trim()));
+                if (value instanceof Number)
+                {
+                    buffer.putDouble(
+                            Double.valueOf(((Number) value).doubleValue()));
+                }
                 break;
             }
             case INT16:
             case UINT16:
             {
-                buffer.putShort(Short.valueOf(value.trim()));
+                if (value instanceof Number)
+                {
+                    buffer.putShort(((Number) value).shortValue());
+                }
                 break;
             }
 
             case INT32:
             case UINT32:
             {
-                buffer.putInt(Integer.valueOf(value.trim()));
+                if (value instanceof Number)
+                {
+                    buffer.putInt(((Number) value).intValue());
+                }
                 break;
             }
             case INT48:
             case UINT48:
             {
-                // wrap into 64bit (8 bytes) and then extract the last 6 bytes.
-                // recall that ByteBuffer is by default BIG_ENDIAN
-                byte[] extendedBuffer = new byte[8];
-                buffer = ByteBuffer.wrap(extendedBuffer);
-                buffer.putLong(Integer.valueOf(value.trim()));
-
-                // extract value
-                for (int i = 0; i < registerBytes.length; i++)
+                if (value instanceof Number)
                 {
-                    registerBytes[i] = extendedBuffer[i + 2];
+                    // wrap into 64bit (8 bytes) and then extract the last 6
+                    // bytes.
+                    // recall that ByteBuffer is by default BIG_ENDIAN
+                    byte[] extendedBuffer = new byte[8];
+                    buffer = ByteBuffer.wrap(extendedBuffer);
+                    buffer.putLong(((Number) value).longValue());
+
+                    // extract value
+                    for (int i = 0; i < registerBytes.length; i++)
+                    {
+                        registerBytes[i] = extendedBuffer[i + 2];
+                    }
                 }
 
                 break;
@@ -783,7 +812,10 @@ public class BaseRegXlator
             case INT64:
             case UINT64:
             {
-                buffer.putLong(Integer.valueOf(value.trim()));
+                if (value instanceof Number)
+                {
+                    buffer.putLong(((Number) value).longValue());
+                }
                 break;
             }
         }

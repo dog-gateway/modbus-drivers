@@ -7,6 +7,7 @@ Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Import-Package: gnu.io;version="1.0.0",
  it.polito.elite.dog.core.library.model,
  it.polito.elite.dog.core.library.util,
+ javax.measure;version="4.3.1",
  net.wimpi.modbus,
  net.wimpi.modbus.cmd,
  net.wimpi.modbus.facade,

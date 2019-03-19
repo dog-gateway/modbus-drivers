@@ -486,10 +486,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * ModbusRegisterInfo)
      */
     @Override
-    public synchronized String read(ModbusRegisterInfo register,
+    public synchronized Object read(ModbusRegisterInfo register,
             ModbusDriverInstance driver)
     {
-        String result = null;
+        Object result = null;
 
         // prepare the TCP connection to the gateway offering access to the
         // given register
@@ -564,9 +564,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             String responseAsString = response.getHexMessage();
             this.logger.debug("Received -> " + responseAsString);
 
-            String responseValue = register.getXlator().getValue(response);
+            Object responseValue = register.getXlator().getValue(response);
 
-            if (responseValue != null && !responseValue.isEmpty())
+            if (responseValue != null)
             {
 
                 this.logger.debug("Translated into -> " + responseValue);
@@ -604,14 +604,14 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * ModbusRegisterInfo, java.lang.String)
      */
     @Override
-    public boolean write(ModbusRegisterInfo register, String commandValue)
+    public boolean write(ModbusRegisterInfo register, Object commandValue)
     {
         return this.writeValue(register, commandValue, null);
     }
 
     @Override
-    public boolean writeBit(ModbusRegisterInfo register, String commandValue,
-            String registerValue)
+    public boolean writeBit(ModbusRegisterInfo register, Object commandValue,
+            Object registerValue)
     {
         return this.writeValue(register, commandValue, registerValue);
     }
@@ -629,8 +629,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      * @param registerValue
      *            The value of the register to "modify" for BIT registers.
      */
-    private boolean writeValue(ModbusRegisterInfo register, String commandValue,
-            String registerValue)
+    private boolean writeValue(ModbusRegisterInfo register, Object commandValue,
+            Object registerValue)
     {
         boolean written = false;
 

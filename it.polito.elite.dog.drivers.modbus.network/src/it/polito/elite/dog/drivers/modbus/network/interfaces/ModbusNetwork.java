@@ -35,7 +35,7 @@ public interface ModbusNetwork
      *            the register unique identifier.
      * @return a String representation of the register value.
      */
-    public String read(ModbusRegisterInfo register,
+    public Object read(ModbusRegisterInfo register,
             ModbusDriverInstance driver);
 
     /**
@@ -47,7 +47,7 @@ public interface ModbusNetwork
      *            the command value to send.
      * @return true if the command was successfully written, false otherwise.
      */
-    public boolean write(ModbusRegisterInfo register, String commandValue);
+    public boolean write(ModbusRegisterInfo register, Object commandValue);
 
     /**
      * Writes a given command to a given Modbus register
@@ -59,8 +59,8 @@ public interface ModbusNetwork
      * 
      * @return true if the command was successfully written, false otherwise.
      */
-    public boolean writeBit(ModbusRegisterInfo register, String commandValue,
-            String currentRegisterValue);
+    public boolean writeBit(ModbusRegisterInfo register, Object commandValue,
+            Object currentRegisterValue);
 
     /**
      * Adds a new device-specific driver for the given register
