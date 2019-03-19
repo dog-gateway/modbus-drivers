@@ -528,7 +528,11 @@ public abstract class ModbusDriverInstance extends
             registerInfo.setXlator(xlator);
         }
         
+        // set the logger
+        registerInfo.getXlator().setLogger(this.logger);
+        // set the scale factor
         registerInfo.getXlator().setScaleFactor(scaleFactor);
+        // set the unit of measure
         registerInfo.getXlator().setUnitOfMeasure(unitOfMeasure);
 
         return registerInfo;

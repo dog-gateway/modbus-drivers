@@ -86,7 +86,7 @@ public class BaseRegXlator
     protected int[][] endianess32bit = { { 1, 0 }, { 0, 1 } };
 
     // the class logger
-    public static Logger logger;
+    private Logger logger;
 
     /**
      * Create a new instance of regXlator given the register description
@@ -249,7 +249,6 @@ public class BaseRegXlator
             }
         }
 
-        // TODO Auto-generated method stub
         return request;
     }
 
@@ -341,6 +340,27 @@ public class BaseRegXlator
     public void setUnitOfMeasure(String unitOfMeasure)
     {
         this.unitOfMeasure = unitOfMeasure;
+    }
+
+    /**
+     * Get the logger currently assigned to this regxlator.
+     * 
+     * @return the logger
+     */
+    public Logger getLogger()
+    {
+        return this.logger;
+    }
+
+    /**
+     * Set the logger for this regxlator.
+     * 
+     * @param logger
+     *            the logger to set
+     */
+    public void setLogger(Logger logger)
+    {
+        this.logger = logger;
     }
 
     /*
@@ -484,16 +504,16 @@ public class BaseRegXlator
         Number scaledValue = this.fromRegisters(registers);
 
         // scale the value if needed
+        // no scaling can be applied to BIT values
         // WARNING!! this implies a precision loss for 64bit INT e UINT values
         if (this.registerSize != DataSizeEnum.BIT)
         {
-            // avoid conversion and precision loss on unitary scale factors.
+            // avoid conversion and precision loss on unit scale factors.
             if (this.scaleFactor != 1.0)
             {
                 scaledValue = scaledValue.doubleValue() * this.scaleFactor;
             }
 
-            // no scaling can be applied to BIT values
             value = "" + scaledValue
                     + ((this.unitOfMeasure != null) ? " " + this.unitOfMeasure
                             : "");
