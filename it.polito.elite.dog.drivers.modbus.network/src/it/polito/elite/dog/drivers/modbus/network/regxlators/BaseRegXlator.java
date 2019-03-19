@@ -85,6 +85,8 @@ public class BaseRegXlator
     // 1 01
     protected int[][] endianess32bit = { { 1, 0 }, { 0, 1 } };
 
+    protected int[][] endianess48bit = { { 2, 1, 0 }, { 0, 1, 2 } };
+
     // the class logger
     private Logger logger;
 
@@ -563,14 +565,63 @@ public class BaseRegXlator
                     result = registerBytesValue.getShort();
                     break;
                 }
+
                 case UINT32:
                 {
                     result = (long) (registerBytesValue.getInt() & 0xffffffff);
                     break;
                 }
+
                 case INT32:
                 {
                     result = registerBytesValue.getInt();
+                    break;
+                }
+
+                case UINT48:
+                {
+                    byte[] registerBytesWithFilling = new byte[8];
+
+                    // propagate the sign
+                    registerBytesWithFilling[0] = 0x00;
+                    registerBytesWithFilling[1] = 0x00;
+
+                    // copy the register bytes
+                    for (int i = 0; i < registerBytes.length; i++)
+                    {
+                        registerBytesWithFilling[i + 2] = registerBytes[i];
+                    }
+
+                    // wrap the filled bytes
+                    registerBytesValue = ByteBuffer
+                            .wrap(registerBytesWithFilling);
+
+                    // get the value
+                    result = registerBytesValue.getLong();
+                    break;
+                }
+                case INT48:
+                {
+                    byte[] registerBytesWithFilling = new byte[8];
+
+                    // propagate the sign
+                    byte fillValue = (byte) ((registerBytes[0] >= 0) ? 0x00
+                            : 0xff);
+                    registerBytesWithFilling[0] = fillValue;
+                    registerBytesWithFilling[1] = fillValue;
+
+                    // copy the register bytes
+                    for (int i = 0; i < registerBytes.length; i++)
+                    {
+                        registerBytesWithFilling[i + 1] = registerBytes[i];
+                    }
+
+                    // wrap the filled bytes
+                    registerBytesValue = ByteBuffer
+                            .wrap(registerBytesWithFilling);
+
+                    // get the value
+                    result = registerBytesValue.getLong();
                     break;
                 }
                 case UINT64:
@@ -705,10 +756,28 @@ public class BaseRegXlator
                 buffer.putShort(Short.valueOf(value.trim()));
                 break;
             }
+
             case INT32:
             case UINT32:
             {
                 buffer.putInt(Integer.valueOf(value.trim()));
+                break;
+            }
+            case INT48:
+            case UINT48:
+            {
+                // wrap into 64bit (8 bytes) and then extract the last 6 bytes.
+                // recall that ByteBuffer is by default BIG_ENDIAN
+                byte[] extendedBuffer = new byte[8];
+                buffer = ByteBuffer.wrap(extendedBuffer);
+                buffer.putLong(Integer.valueOf(value.trim()));
+
+                // extract value
+                for (int i = 0; i < registerBytes.length; i++)
+                {
+                    registerBytes[i] = extendedBuffer[i + 2];
+                }
+
                 break;
             }
             case INT64:
@@ -817,6 +886,10 @@ public class BaseRegXlator
         {
             endiannessKey = (this.wordOrder == OrderEnum.LITTLE_ENDIAN) ? 0 : 1;
         }
+        else if (this.registerSize.getNBits() == 48)
+        {
+            endiannessKey = (this.wordOrder == OrderEnum.LITTLE_ENDIAN) ? 0 : 1;
+        }
 
         return endiannessKey;
     }
@@ -840,6 +913,10 @@ public class BaseRegXlator
         else if (this.registerSize.getNBits() == 32)
         {
             endiannessMap = endianess32bit[endiannessKey];
+        }
+        else if (this.registerSize.getNBits() == 48)
+        {
+            endiannessMap = endianess48bit[endiannessKey];
         }
         return endiannessMap;
     }

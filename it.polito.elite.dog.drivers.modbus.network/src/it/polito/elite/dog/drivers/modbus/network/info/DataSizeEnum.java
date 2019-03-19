@@ -21,9 +21,17 @@ package it.polito.elite.dog.drivers.modbus.network.info;
  */
 public enum DataSizeEnum
 {
-    BIT("bit", 16), INT16("int16", 16), UINT16("uint16", 16), INT32("int32",
-            32), UINT32("uint32", 32), INT64("int64", 64), UINT64("uint64",
-                    64), FLOAT32("float32", 32), FLOAT64("float64", 64);
+    BIT("bit", 16),
+
+    INT16("int16", 16), UINT16("uint16", 16),
+
+    INT32("int32", 32), UINT32("uint32", 32),
+
+    INT48("int48", 48), UINT48("uint48", 48),
+
+    INT64("int64", 64), UINT64("uint64", 64),
+
+    FLOAT32("float32", 32), FLOAT64("float64", 64);
 
     private String value;
     private int nBits;
