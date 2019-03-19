@@ -328,13 +328,17 @@ public abstract class ModbusDriverInstance extends
                 ModbusRegisterInfo registerInfo = this
                         .extractRegisterSpecificParameters(params);
 
-                CNParameters cmdInfo = new CNParameters(realCommandName,
-                        parameter.getElementParams());
-                // add the command to data point entry
-                this.command2Register.put(cmdInfo, registerInfo);
+                // check that a register info has been extracted
+                if (!registerInfo.isEmpty())
+                {
+                    CNParameters cmdInfo = new CNParameters(realCommandName,
+                            parameter.getElementParams());
+                    // add the command to data point entry
+                    this.command2Register.put(cmdInfo, registerInfo);
 
-                // add the datapoint to the set of managed datapoints
-                this.managedRegisters.add(registerInfo);
+                    // add the datapoint to the set of managed datapoints
+                    this.managedRegisters.add(registerInfo);
+                }
 
             }
             catch (UnknownHostException uhe)
@@ -380,27 +384,32 @@ public abstract class ModbusDriverInstance extends
                 ModbusRegisterInfo registerInfo = this
                         .extractRegisterSpecificParameters(params);
 
-                // fill the data point to notification map, if the data
-                // point has never been registered create a new entry in the
-                // map.
-                Set<CNParameters> notificationNames = this.register2Notification
-                        .get(registerInfo);
-
-                if (notificationNames == null)
+                // check that a register info has been extracted
+                if (!registerInfo.isEmpty())
                 {
-                    notificationNames = new HashSet<CNParameters>();
-                    this.register2Notification.put(registerInfo,
-                            notificationNames);
+
+                    // fill the data point to notification map, if the data
+                    // point has never been registered create a new entry in the
+                    // map.
+                    Set<CNParameters> notificationNames = this.register2Notification
+                            .get(registerInfo);
+
+                    if (notificationNames == null)
+                    {
+                        notificationNames = new HashSet<CNParameters>();
+                        this.register2Notification.put(registerInfo,
+                                notificationNames);
+                    }
+
+                    // add the notification name to the set associated to the dp
+                    // datapoint
+                    CNParameters nInfo = new CNParameters(notificationName,
+                            parameter.getElementParams());
+                    notificationNames.add(nInfo);
+
+                    // add the datapoint to the set of managed datapoints
+                    this.managedRegisters.add(registerInfo);
                 }
-
-                // add the notification name to the set associated to the dp
-                // datapoint
-                CNParameters nInfo = new CNParameters(notificationName,
-                        parameter.getElementParams());
-                notificationNames.add(nInfo);
-
-                // add the datapoint to the set of managed datapoints
-                this.managedRegisters.add(registerInfo);
 
             }
             catch (UnknownHostException uhe)
@@ -527,7 +536,7 @@ public abstract class ModbusDriverInstance extends
             // set the register info xlator
             registerInfo.setXlator(xlator);
         }
-        
+
         // set the logger
         registerInfo.getXlator().setLogger(this.logger);
         // set the scale factor

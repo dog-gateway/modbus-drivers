@@ -398,4 +398,16 @@ public class ModbusRegisterInfo
         return true;
     }
 
+    /**
+     * Check if this modbus register info is empty.
+     * 
+     * @return True if it is empty, false otherwise.
+     */
+    public boolean isEmpty()
+    {
+        return !(((this.gatewayIPAddress != null && this.gatewayPort != null)
+                || (this.serialParameters != null)) && (this.address >= 0)
+                && (this.slaveId > 0) && (this.xlator != null));
+    }
+
 }
