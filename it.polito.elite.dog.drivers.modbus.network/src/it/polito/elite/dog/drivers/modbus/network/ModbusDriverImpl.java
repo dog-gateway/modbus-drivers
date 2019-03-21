@@ -50,12 +50,15 @@ import java.net.InetAddress;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -102,8 +105,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     private int trialsDone;
     // the time that must occur between two subsequent trials
     private int betweenTrialTimeMillis;
-    // a reference to the connection trials timer
-    private Timer connectionTrialsTimer;
+
+    // handle multiple reconnection attempts
+    private ScheduledExecutorService reconnectionService;
+    private Map<String, Future<?>> activeReconnectionTimers;
+
     // number of cycles that a broken register will be in the blacklist
     private int maxBlacklistPollingCycles;
     // the set of modbus poller, one per each gateway.
@@ -118,6 +124,12 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     {
         // -- initialize atomic references
         this.loggerFactory = new AtomicReference<LoggerFactory>();
+
+        // create the scheduled executor service
+        // the number of threads in the pool defines the maximum number that can
+        // be handled in paralell.
+        this.reconnectionService = Executors.newScheduledThreadPool(1);
+        this.activeReconnectionTimers = new HashMap<String, Future<?>>();
 
         // -- initialize defaults
         // the polling time
@@ -678,44 +690,53 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 writeRequest = register.getXlator()
                         .getWriteRequest(register.getAddress(), commandValue);
             }
-            writeRequest.setUnitID(register.getSlaveId());
-            writeRequest.setTransactionID(1);
 
-            // create a modbus tcp transaction for the just created writeRequest
-            ModbusTransaction transaction = this.getTransaction(writeRequest,
-                    modbusConnection, variant);
+            // if the write request is null, than the register is not writable
+            if (writeRequest != null)
+            {
+                writeRequest.setUnitID(register.getSlaveId());
+                writeRequest.setTransactionID(1);
 
-            // try to execute the transaction and manage possible errors...
-            try
-            {
-                transaction.execute();
-                written = true;
-            }
-            catch (ModbusIOException e)
-            {
-                // debug
-                this.logger
-                        .error("Error on Modbus I/O communication for register "
-                                + register.getAddress() + "\nException: " + e);
-            }
-            catch (ModbusSlaveException e)
-            {
-                // debug
-                this.logger.error("Error on Modbus Slave, for register "
-                        + register.getAddress() + "\nException: " + e);
-            }
-            catch (ModbusException e)
-            {
-                // debug
-                this.logger.error("Error on Modbus while writing register "
-                        + register.getAddress() + "\nException: " + e);
+                // create a modbus tcp transaction for the just created
+                // writeRequest
+                ModbusTransaction transaction = this.getTransaction(
+                        writeRequest, modbusConnection, variant);
+
+                // try to execute the transaction and manage possible errors...
+                try
+                {
+                    transaction.execute();
+                    written = true;
+                }
+                catch (ModbusIOException e)
+                {
+                    // debug
+                    this.logger.error(
+                            "Error on Modbus I/O communication for register "
+                                    + register.getAddress() + "\nException: "
+                                    + e);
+                }
+                catch (ModbusSlaveException e)
+                {
+                    // debug
+                    this.logger.error("Error on Modbus Slave, for register "
+                            + register.getAddress() + "\nException: " + e);
+                }
+                catch (ModbusException e)
+                {
+                    // debug
+                    this.logger.error("Error on Modbus while writing register "
+                            + register.getAddress() + "\nException: " + e);
+                }
             }
         }
         else
         {
 
             // info on port usage
-            this.logger.info("Using port: " + gwPort);
+            this.logger.info(
+                    "The gateway {} is currently not connected, attempting re-connection",
+                    register.getGatewayIdentifier());
 
             // close and re-open
             this.closeAndReOpen(register.getGatewayIdentifier(),
@@ -944,9 +965,14 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         this.gatewayAddress2Registers
                                 .remove(register.getGatewayIdentifier());
 
+                        // stop any pending reconnection attempt
+                        this.logger.debug(
+                                "Removing pending reconnection attempts");
+                        this.activeReconnectionTimers
+                                .remove(register.getGatewayIdentifier());
+
                         // stop / delete the poller as no register shall be read
                         // from the given gateway address.
-
                         // log
                         this.logger.debug("Stopping the poller thread for: {}",
                                 register.getGatewayIdentifier());
@@ -958,6 +984,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         this.logger.debug("Removing poller for: {}",
                                 register.getGatewayIdentifier());
                         this.pollerPool.remove(register.getGatewayIdentifier());
+
                     }
                 }
             }
@@ -1023,6 +1050,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 {
                     connection.connect();
 
+                    this.connectionPool.put(gwIdentifier, connection);
+
                 }
                 catch (Exception e)
                 {
@@ -1038,21 +1067,32 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         this.logger.warn(
                                 "Unable to connect to the given Modbus gateway, retrying in "
                                         + this.betweenTrialTimeMillis + " ms");
+
                         // schedule a new timer to re-call the open function
                         // after
                         // the
                         // given trial timeout...
-                        connectionTrialsTimer = new Timer();
-                        connectionTrialsTimer.schedule(new TimerTask()
+                        Runnable openConnectionTask = new Runnable()
                         {
 
                             @Override
                             public void run()
                             {
+                                // TODO Auto-generated method stub
                                 openConnection(gwIdentifier, gwAddress, gwPort,
                                         gwProtocol, serialParameters);
                             }
-                        }, this.betweenTrialTimeMillis);
+
+                        };
+                        // schedule
+                        Future<?> reconnectionTaskResult = this.reconnectionService
+                                .schedule(openConnectionTask,
+                                        this.betweenTrialTimeMillis,
+                                        TimeUnit.MILLISECONDS);
+
+                        // store the future
+                        this.activeReconnectionTimers.put(gwIdentifier,
+                                reconnectionTaskResult);
 
                         // avoid incrementing the number of trials if the
                         // nConnectionTrials is equal to 0 (i.e. infinite
@@ -1068,7 +1108,6 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     }
                 }
 
-                this.connectionPool.put(gwIdentifier, connection);
             }
         }
         else
@@ -1115,17 +1154,58 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 
         // schedule a new timer to re-call the open function after the
         // given trial timeout...
-        connectionTrialsTimer = new Timer();
-        connectionTrialsTimer.schedule(new TimerTask()
+        Runnable openConnectionTask = new Runnable()
         {
 
             @Override
             public void run()
             {
+                // TODO Auto-generated method stub
                 openConnection(gwIdentifier, gwAddress, gwPort, gwProtocol,
                         serialParameters);
             }
-        }, this.betweenTrialTimeMillis);
+
+        };
+
+        // check if a pending connection request already exists for the given
+        // gateway
+        if (this.activeReconnectionTimers.containsKey(gwIdentifier))
+        {
+            // check if completed
+            Future<?> reconnectionTaskResult = this.activeReconnectionTimers
+                    .get(gwIdentifier);
+
+            if (reconnectionTaskResult.isDone()
+                    || reconnectionTaskResult.isCancelled())
+            {
+                // re schedule
+                reconnectionTaskResult = this.reconnectionService.schedule(
+                        openConnectionTask, this.betweenTrialTimeMillis,
+                        TimeUnit.MILLISECONDS);
+
+                // store the future
+                this.activeReconnectionTimers.put(gwIdentifier,
+                        reconnectionTaskResult);
+            }
+            else
+            {
+                // log
+                this.logger.info(
+                        "A re-connection attempt is already ongoing for the gateway {}.",
+                        gwIdentifier);
+            }
+        }
+        else
+        {
+            // schedule
+            Future<?> reconnectionTaskResult = this.reconnectionService
+                    .schedule(openConnectionTask, this.betweenTrialTimeMillis,
+                            TimeUnit.MILLISECONDS);
+
+            // store the future
+            this.activeReconnectionTimers.put(gwIdentifier,
+                    reconnectionTaskResult);
+        }
     }
 
     protected ModbusTransaction getTransaction(ModbusRequest request,
