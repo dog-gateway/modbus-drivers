@@ -22,7 +22,7 @@ import it.polito.elite.dog.core.library.model.DeviceCostants;
 import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
-
+import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.framework.ServiceRegistration;
@@ -270,8 +270,13 @@ public class ModbusGatewayDriver implements Driver
             this.context.ungetService(reference);
 
             // check not null
-            if ((deviceInfo.getIpAddress() != null)
-                    && (!deviceInfo.getIpAddress().isEmpty()))
+            if ((deviceInfo.getProtocolVariant()
+                    .equals(ModbusProtocolVariant.RTU.toString())
+                    && deviceInfo.getSerialParameters() != null)
+                    || (!deviceInfo.getProtocolVariant()
+                            .equals(ModbusProtocolVariant.RTU.toString())
+                            && deviceInfo.getIpAddress() != null
+                            && !deviceInfo.getIpAddress().isEmpty()))
             {
 
                 // create a new instance of the gateway driver

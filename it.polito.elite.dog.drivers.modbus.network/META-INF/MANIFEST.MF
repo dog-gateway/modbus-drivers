@@ -25,6 +25,7 @@ Bundle-ClassPath: .
 Export-Package: it.polito.elite.dog.drivers.modbus.network;version="1.0.0",
  it.polito.elite.dog.drivers.modbus.network.info;version="1.0.0",
  it.polito.elite.dog.drivers.modbus.network.interfaces;version="1.0.0",
+ it.polito.elite.dog.drivers.modbus.network.protocol,
  it.polito.elite.dog.drivers.modbus.network.regxlators;version="1.0.0"
 Service-Component: OSGI-INF/component.xml
 Bundle-ActivationPolicy: lazy
