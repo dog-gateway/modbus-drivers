@@ -445,8 +445,9 @@ public class ModbusPoller extends Thread
                         try
                         {
                             // minimum time between subsequent register read
-                            Thread.sleep(
-                                    ModbusPoller.MINIMUM_TIME_BETWEEN_REGISTER_READS);
+                            Thread.sleep((register.getRequestGapMillis() > 0)
+                                    ? register.getRequestGapMillis()
+                                    : ModbusDriverImpl.DEFAULT_REQUEST_GAP_MILLIS);
                         }
                         catch (InterruptedException e)
                         {

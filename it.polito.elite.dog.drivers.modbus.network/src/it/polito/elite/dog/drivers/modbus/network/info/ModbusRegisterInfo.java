@@ -17,6 +17,7 @@
  */
 package it.polito.elite.dog.drivers.modbus.network.info;
 
+import it.polito.elite.dog.drivers.modbus.network.ModbusDriverImpl;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlatorTypes;
@@ -63,7 +64,8 @@ public class ModbusRegisterInfo
      */
     public ModbusRegisterInfo()
     {
-        // intentionally left empty
+        // set default
+        this.requestGapMillis = ModbusDriverImpl.DEFAULT_REQUEST_GAP_MILLIS;
     }
 
     /**

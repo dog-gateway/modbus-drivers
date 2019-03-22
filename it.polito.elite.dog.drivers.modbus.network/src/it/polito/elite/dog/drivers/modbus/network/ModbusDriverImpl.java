@@ -82,6 +82,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     public static final int DEFAULT_RECONNECTION_INTERVAL_MILLIS = 3000;
     // the default blacklist duration (in polling cycles)
     public static final int DEFAULT_BLACKLIST_DURATION = 80;
+    // the default request gat
+    public static final int DEFAULT_REQUEST_GAP_MILLIS = 5;
 
     // the bundle context
     private BundleContext bundleContext;
