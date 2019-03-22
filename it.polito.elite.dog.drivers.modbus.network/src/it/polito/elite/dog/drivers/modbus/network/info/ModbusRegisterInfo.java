@@ -31,7 +31,7 @@ import java.net.InetAddress;
  * 
  * @since Jan 13, 2012
  */
-public class ModbusRegisterInfo
+public class ModbusRegisterInfo implements Comparable<ModbusRegisterInfo>
 {
     // the IP address of the gateway to which a specific device is connected
     private InetAddress gatewayIPAddress;
@@ -410,6 +410,40 @@ public class ModbusRegisterInfo
         return !(((this.gatewayIPAddress != null && this.gatewayPort != null)
                 || (this.serialParameters != null)) && (this.address >= 0)
                 && (this.slaveId > 0) && (this.xlator != null));
+    }
+
+    @Override
+    public int compareTo(ModbusRegisterInfo registerInfo)
+    {
+        int comparisonValue = -1;
+
+        if (this.equals(registerInfo))
+        {
+            comparisonValue = 0;
+        }
+        else
+        {
+            if (this.slaveId > registerInfo.getSlaveId())
+            {
+                comparisonValue = +1;
+            }
+            else if (this.slaveId < registerInfo.getSlaveId())
+            {
+                comparisonValue = -1;
+            }
+            else if (this.slaveId == registerInfo.getSlaveId())
+            {
+                if (this.address > registerInfo.getAddress())
+                {
+                    comparisonValue = +1;
+                }
+                else
+                {
+                    comparisonValue = -1;
+                }
+            }
+        }
+        return comparisonValue;
     }
 
 }

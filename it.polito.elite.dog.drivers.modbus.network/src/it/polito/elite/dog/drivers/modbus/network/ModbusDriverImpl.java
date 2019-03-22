@@ -54,6 +54,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -817,7 +818,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             if (registers == null)
             {
                 // create the new entry
-                registers = new HashSet<ModbusRegisterInfo>();
+                registers = new TreeSet<ModbusRegisterInfo>();
                 this.gatewayAddress2Registers
                         .put(register.getGatewayIdentifier(), registers);
             }

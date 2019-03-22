@@ -320,8 +320,13 @@ public class ModbusPoller extends Thread
 
                 synchronized (registers)
                 {
-                    for (ModbusRegisterInfo register : registers)
+                    // iterate in order
+                    Iterator<ModbusRegisterInfo> regIterator = registers
+                            .iterator();
+                    while (regIterator.hasNext())
                     {
+                        ModbusRegisterInfo register = regIterator.next();
+
                         // prepare the read request using the register
                         // translator
                         // for composing the right Modbus request...
