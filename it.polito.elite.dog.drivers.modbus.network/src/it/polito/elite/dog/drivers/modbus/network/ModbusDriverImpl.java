@@ -654,97 +654,107 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         MasterConnection modbusConnection = this.connectionPool
                 .get(register.getGatewayIdentifier());
 
-        // get the gateway port
-        String gwPortAsString = register.getGatewayPort();
-
-        // handle the port using defaults
-        int gwPort = Modbus.DEFAULT_PORT;
-
-        try
+        // check not null
+        if (modbusConnection != null)
         {
-            gwPort = Integer.valueOf(gwPortAsString);
-        }
-        catch (NumberFormatException e)
-        {
-            // reset to the default
-            gwPort = Modbus.DEFAULT_PORT;
-        }
 
-        // parse the protocol variant
-        ModbusProtocolVariant variant = register.getGatewayProtocol();
+            // get the gateway port
+            String gwPortAsString = register.getGatewayPort();
 
-        if (modbusConnection.isConnected())
-        {
-            // successfully connected
-            this.logger.debug("Successfully connected to the Modbus TCP Slave");
+            // handle the port using defaults
+            int gwPort = Modbus.DEFAULT_PORT;
 
-            ModbusRequest writeRequest = null;
-
-            if (registerValue != null
-                    && register.getXlator() instanceof BaseRegXlator)
+            try
             {
-                writeRequest = ((BaseRegXlator) register.getXlator())
-                        .getWriteRequest(register.getAddress(), commandValue,
-                                registerValue);
+                gwPort = Integer.valueOf(gwPortAsString);
+            }
+            catch (NumberFormatException e)
+            {
+                // reset to the default
+                gwPort = Modbus.DEFAULT_PORT;
+            }
 
+            // parse the protocol variant
+            ModbusProtocolVariant variant = register.getGatewayProtocol();
+
+            if (modbusConnection.isConnected())
+            {
+                // successfully connected
+                this.logger.debug(
+                        "Successfully connected to the Modbus TCP Slave");
+
+                ModbusRequest writeRequest = null;
+
+                if (registerValue != null
+                        && register.getXlator() instanceof BaseRegXlator)
+                {
+                    writeRequest = ((BaseRegXlator) register.getXlator())
+                            .getWriteRequest(register.getAddress(),
+                                    commandValue, registerValue);
+
+                }
+                else
+                {
+                    writeRequest = register.getXlator().getWriteRequest(
+                            register.getAddress(), commandValue);
+                }
+
+                // if the write request is null, than the register is not
+                // writable
+                if (writeRequest != null)
+                {
+                    writeRequest.setUnitID(register.getSlaveId());
+                    writeRequest.setTransactionID(1);
+
+                    // create a modbus tcp transaction for the just created
+                    // writeRequest
+                    ModbusTransaction transaction = this.getTransaction(
+                            writeRequest, modbusConnection, variant);
+
+                    // try to execute the transaction and manage possible
+                    // errors...
+                    try
+                    {
+                        transaction.execute();
+                        written = true;
+                    }
+                    catch (ModbusIOException e)
+                    {
+                        // debug
+                        this.logger.error(
+                                "Error on Modbus I/O communication for register "
+                                        + register.getAddress()
+                                        + "\nException: " + e);
+                    }
+                    catch (ModbusSlaveException e)
+                    {
+                        // debug
+                        this.logger.error("Error on Modbus Slave, for register "
+                                + register.getAddress() + "\nException: " + e);
+                    }
+                    catch (ModbusException e)
+                    {
+                        // debug
+                        this.logger
+                                .error("Error on Modbus while writing register "
+                                        + register.getAddress()
+                                        + "\nException: " + e);
+                    }
+                }
             }
             else
             {
-                writeRequest = register.getXlator()
-                        .getWriteRequest(register.getAddress(), commandValue);
+
+                // info on port usage
+                this.logger.info(
+                        "The gateway {} is currently not connected, attempting re-connection",
+                        register.getGatewayIdentifier());
+
+                // close and re-open
+                this.closeAndReOpen(register.getGatewayIdentifier(),
+                        register.getGatewayIPAddress(), gwPort, variant,
+                        register.getSerialParameters());
             }
-
-            // if the write request is null, than the register is not writable
-            if (writeRequest != null)
-            {
-                writeRequest.setUnitID(register.getSlaveId());
-                writeRequest.setTransactionID(1);
-
-                // create a modbus tcp transaction for the just created
-                // writeRequest
-                ModbusTransaction transaction = this.getTransaction(
-                        writeRequest, modbusConnection, variant);
-
-                // try to execute the transaction and manage possible errors...
-                try
-                {
-                    transaction.execute();
-                    written = true;
-                }
-                catch (ModbusIOException e)
-                {
-                    // debug
-                    this.logger.error(
-                            "Error on Modbus I/O communication for register "
-                                    + register.getAddress() + "\nException: "
-                                    + e);
-                }
-                catch (ModbusSlaveException e)
-                {
-                    // debug
-                    this.logger.error("Error on Modbus Slave, for register "
-                            + register.getAddress() + "\nException: " + e);
-                }
-                catch (ModbusException e)
-                {
-                    // debug
-                    this.logger.error("Error on Modbus while writing register "
-                            + register.getAddress() + "\nException: " + e);
-                }
-            }
-        }
-        else
-        {
-
-            // info on port usage
-            this.logger.info(
-                    "The gateway {} is currently not connected, attempting re-connection",
-                    register.getGatewayIdentifier());
-
-            // close and re-open
-            this.closeAndReOpen(register.getGatewayIdentifier(),
-                    register.getGatewayIPAddress(), gwPort, variant,
-                    register.getSerialParameters());
         }
 
         return written;
