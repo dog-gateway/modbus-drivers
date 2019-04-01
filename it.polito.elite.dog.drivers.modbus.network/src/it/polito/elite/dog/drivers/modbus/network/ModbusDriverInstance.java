@@ -37,6 +37,7 @@ import org.osgi.framework.BundleContext;
 import org.osgi.framework.ServiceReference;
 import org.osgi.service.device.Device;
 import org.osgi.service.log.Logger;
+import org.osgi.service.log.LoggerFactory;
 import org.osgi.util.tracker.ServiceTracker;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -106,6 +107,11 @@ public abstract class ModbusDriverInstance extends
             BundleContext ctx, ServiceReference<Device> deviceReference)
     {
         super(ctx, deviceReference, null);
+
+        // create the class logger
+        this.logger = ctx
+                .getService(context.getServiceReference(LoggerFactory.class))
+                .getLogger(ModbusDriverInstance.class);
 
         // store a reference to the network driver
         this.network = network;
@@ -329,7 +335,7 @@ public abstract class ModbusDriverInstance extends
                         .extractRegisterSpecificParameters(params);
 
                 // check that a register info has been extracted
-                if (!registerInfo.isEmpty())
+                if (registerInfo != null && !registerInfo.isEmpty())
                 {
                     CNParameters cmdInfo = new CNParameters(realCommandName,
                             parameter.getElementParams());
@@ -344,26 +350,18 @@ public abstract class ModbusDriverInstance extends
             catch (UnknownHostException uhe)
             {
                 // log the error
-                /*
-                 * this.logger.error(
-                 * "Error while parsing register-specific information: \n{}",
-                 * uhe);
-                 */
-                System.err.println(
-                        "Error while parsing register-specific information:\n"
-                                + uhe);
+                this.logger.error(
+                        "Error while parsing register-specific information: \n{}",
+                        uhe);
+
             }
             catch (NumberFormatException nfe)
             {
                 // log the error
-                /*
-                 * this.logger.error(
-                 * "Error while parsing register-specific information: \n{}",
-                 * nfe);
-                 */
-                System.err.println(
-                        "Error while parsing register-specific information:\n"
-                                + nfe);
+                this.logger.error(
+                        "Error while parsing register-specific information: \n{}",
+                        nfe);
+
             }
         }
 
@@ -385,7 +383,7 @@ public abstract class ModbusDriverInstance extends
                         .extractRegisterSpecificParameters(params);
 
                 // check that a register info has been extracted
-                if (!registerInfo.isEmpty())
+                if (registerInfo != null && !registerInfo.isEmpty())
                 {
 
                     // fill the data point to notification map, if the data
@@ -415,26 +413,17 @@ public abstract class ModbusDriverInstance extends
             catch (UnknownHostException uhe)
             {
                 // log the error
-                /*
-                 * this.logger.error(
-                 * "Error while parsing register-specific information: \n{}",
-                 * uhe);
-                 */
-                System.err.println(
-                        "Error while parsing register-specific information:\n"
-                                + uhe);
+                this.logger.error(
+                        "Error while parsing register-specific information: \n{}",
+                        uhe);
+
             }
             catch (NumberFormatException nfe)
             {
                 // log the error
-                /*
-                 * this.logger.error(
-                 * "Error while parsing register-specific information: \n{}",
-                 * nfe);
-                 */
-                System.err.println(
-                        "Error while parsing register-specific information:\n"
-                                + nfe);
+                this.logger.error("Error while parsing register-specific"
+                        + " information: \n{}", nfe);
+
             }
         }
 
@@ -443,107 +432,118 @@ public abstract class ModbusDriverInstance extends
     private ModbusRegisterInfo extractRegisterSpecificParameters(
             Map<String, String> params) throws UnknownHostException
     {
+        // the register info to return
+        ModbusRegisterInfo registerInfo = null;
+
         // get the Modbus register address
-        int registerAddress = Integer
-                .valueOf(params.get(ModbusInfo.REGISTER_ADDRESS));
-        // get the Modbus register unit of measure
-        String unitOfMeasure = params.get(ModbusInfo.REGISTER_UOM);
-        // get the Modbus register type as a string
-        String registerType = params.get(ModbusInfo.REGISTER_TYPE);
-        // get the Modbus register slave id
-        int registerSlaveId = Integer
-                .valueOf(params.get(ModbusInfo.SLAVE_ID).trim());
-        // get the Modbus register scale factor if needed
-        double scaleFactor = Double
-                .valueOf(params.get(ModbusInfo.SCALE_FACTOR).trim());
+        String regAddress = params.get(ModbusInfo.REGISTER_ADDRESS);
 
-        // try parsing the register type as enum, if the result is null
-        // than the register type is likley to be specified using the
-        // former numeric-based specification.
-        RegisterTypeEnum regTypeNew = RegisterTypeEnum.fromValue(registerType);
-
-        // create the register info to store the register-specific
-        // parameters
-        ModbusRegisterInfo registerInfo = new ModbusRegisterInfo();
-
-        // set the register info parameters
-        registerInfo.setAddress(registerAddress);
-
-        // fill the register gateway address
-        registerInfo.setGatewayIPAddress(InetAddress.getByName(this.gwAddress));
-
-        // fill the register gateway port
-        registerInfo.setGatewayPort(this.gwPort);
-
-        // fill the protocol variant associated to the gateway
-        registerInfo.setGatewayProtocol(this.gwProtocol);
-
-        // for the serial connections, it adds the serial parameters
-        if (this.gwProtocol.equals(ModbusProtocolVariant.RTU.toString()))
+        // no address no party
+        if (regAddress != null && !regAddress.isEmpty())
         {
-            registerInfo.setSerialParameters(serialParameters);
+            int registerAddress = Integer.valueOf(regAddress);
+            // get the Modbus register unit of measure
+            String unitOfMeasure = params.get(ModbusInfo.REGISTER_UOM);
+            // get the Modbus register type as a string
+            String registerType = params.get(ModbusInfo.REGISTER_TYPE);
+            // get the Modbus register slave id
+            int registerSlaveId = Integer
+                    .valueOf(params.get(ModbusInfo.SLAVE_ID).trim());
+            // get the Modbus register scale factor if needed
+            double scaleFactor = Double
+                    .valueOf(params.get(ModbusInfo.SCALE_FACTOR).trim());
+
+            // try parsing the register type as enum, if the result is null
+            // than the register type is likley to be specified using the
+            // former numeric-based specification.
+            RegisterTypeEnum regTypeNew = RegisterTypeEnum
+                    .fromValue(registerType);
+
+            // create the register info to store the register-specific
+            // parameters
+            registerInfo = new ModbusRegisterInfo();
+
+            // set the register info parameters
+            registerInfo.setAddress(registerAddress);
+
+            // fill the register gateway address
+            registerInfo
+                    .setGatewayIPAddress(InetAddress.getByName(this.gwAddress));
+
+            // fill the register gateway port
+            registerInfo.setGatewayPort(this.gwPort);
+
+            // fill the protocol variant associated to the gateway
+            registerInfo.setGatewayProtocol(this.gwProtocol);
+
+            // for the serial connections, it adds the serial parameters
+            if (this.gwProtocol.equals(ModbusProtocolVariant.RTU.toString()))
+            {
+                registerInfo.setSerialParameters(serialParameters);
+            }
+
+            // fill the slave id
+            registerInfo.setSlaveId(registerSlaveId);
+
+            // support to v1.2 version of driver
+            if (regTypeNew != null)
+            {
+
+                // get the request timeout
+                long requestTimeout = Long.valueOf(
+                        params.get(ModbusInfo.REQUEST_TIMEOUT_MILLIS).trim());
+                // get the minimum request gap
+                long requestGap = Long.valueOf(
+                        params.get(ModbusInfo.REQUEST_GAP_MILLIS).trim());
+
+                // fill the request timeout
+                registerInfo.setRequestTimeoutMillis(requestTimeout);
+
+                // fill the request gap
+                registerInfo.setRequestGapMillis(requestGap);
+
+                // the register data size
+                DataSizeEnum dataSize = DataSizeEnum
+                        .fromValue(params.get(ModbusInfo.DATA_SIZE).trim());
+                // the register byte order
+                OrderEnum byteOrder = OrderEnum
+                        .fromValue(params.get(ModbusInfo.BYTE_ORDER).trim());
+                // the word order
+                OrderEnum wordOrder = OrderEnum
+                        .fromValue(params.get(ModbusInfo.WORD_ORDER).trim());
+                // the double word order
+                OrderEnum doubleWordOrder = OrderEnum.fromValue(
+                        params.get(ModbusInfo.DOUBLE_WORD_ORDER).trim());
+                // the bit value
+                int bit = Integer.valueOf(params.get(ModbusInfo.BIT).trim());
+
+                // build a BaseXlator
+                BaseRegXlator baseXlator = new BaseRegXlator(dataSize,
+                        regTypeNew, byteOrder, wordOrder, doubleWordOrder, bit);
+
+                // set the register info xlator
+                registerInfo.setXlator(baseXlator);
+            }
+            else
+            {
+
+                // fill the translator properties
+                BaseRegXlator xlator = RegXlatorTypes
+                        .createRegXlator(Integer.valueOf(registerType));
+
+                // set the register info xlator
+                registerInfo.setXlator(xlator);
+            }
+
+            // set the logger
+            registerInfo.getXlator().setLogger(this.logger);
+            // set the scale factor
+            registerInfo.getXlator().setScaleFactor(scaleFactor);
+            // set the unit of measure
+            registerInfo.getXlator().setUnitOfMeasure(unitOfMeasure);
+
         }
-
-        // fill the slave id
-        registerInfo.setSlaveId(registerSlaveId);
-
-        // support to v1.2 version of driver
-        if (regTypeNew != null)
-        {
-
-            // get the request timeout
-            long requestTimeout = Long.valueOf(
-                    params.get(ModbusInfo.REQUEST_TIMEOUT_MILLIS).trim());
-            // get the minimum request gap
-            long requestGap = Long
-                    .valueOf(params.get(ModbusInfo.REQUEST_GAP_MILLIS).trim());
-
-            // fill the request timeout
-            registerInfo.setRequestTimeoutMillis(requestTimeout);
-
-            // fill the request gap
-            registerInfo.setRequestGapMillis(requestGap);
-
-            // the register data size
-            DataSizeEnum dataSize = DataSizeEnum
-                    .fromValue(params.get(ModbusInfo.DATA_SIZE).trim());
-            // the register byte order
-            OrderEnum byteOrder = OrderEnum
-                    .fromValue(params.get(ModbusInfo.BYTE_ORDER).trim());
-            // the word order
-            OrderEnum wordOrder = OrderEnum
-                    .fromValue(params.get(ModbusInfo.WORD_ORDER).trim());
-            // the double word order
-            OrderEnum doubleWordOrder = OrderEnum
-                    .fromValue(params.get(ModbusInfo.DOUBLE_WORD_ORDER).trim());
-            // the bit value
-            int bit = Integer.valueOf(params.get(ModbusInfo.BIT).trim());
-
-            // build a BaseXlator
-            BaseRegXlator baseXlator = new BaseRegXlator(dataSize, regTypeNew,
-                    byteOrder, wordOrder, doubleWordOrder, bit);
-
-            // set the register info xlator
-            registerInfo.setXlator(baseXlator);
-        }
-        else
-        {
-
-            // fill the translator properties
-            BaseRegXlator xlator = RegXlatorTypes
-                    .createRegXlator(Integer.valueOf(registerType));
-
-            // set the register info xlator
-            registerInfo.setXlator(xlator);
-        }
-
-        // set the logger
-        registerInfo.getXlator().setLogger(this.logger);
-        // set the scale factor
-        registerInfo.getXlator().setScaleFactor(scaleFactor);
-        // set the unit of measure
-        registerInfo.getXlator().setUnitOfMeasure(unitOfMeasure);
-
         return registerInfo;
     }
+
 }
