@@ -32,15 +32,15 @@ public class ModbusInfo extends ConfigurationConstants
     // for the serial port connection the baud rate used
     public static final String BAUD_RATE = "baudRate";
     // for the serial port connection the data bits used
-    public static final Object DATA_BITS = "dataBits";
+    public static final String DATA_BITS = "dataBits";
     // for the serial port connection the parity used
-    public static final Object PARITY = "parity";
+    public static final String PARITY = "parity";
     // for the serial port connection the stop bits used
-    public static final Object STOP_BITS = "stopBits";
+    public static final String STOP_BITS = "stopBits";
     // for the serial port connection the encoding used
-    public static final Object ENCODING = "encoding";
+    public static final String ENCODING = "encoding";
     // for the serial port connection the indication if the echo is used or not
-    public static final Object ECHO = "echo";
+    public static final String ECHO = "echo";
     // the manufacturer identifier (Modbus)
     public static final String MANUFACTURER = "Modbus";
     // the gateway address
