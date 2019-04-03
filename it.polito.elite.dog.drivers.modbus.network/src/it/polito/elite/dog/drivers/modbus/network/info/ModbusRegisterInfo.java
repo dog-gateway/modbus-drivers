@@ -446,4 +446,18 @@ public class ModbusRegisterInfo implements Comparable<ModbusRegisterInfo>
         return comparisonValue;
     }
 
+    public ModbusRegisterInfo clone()
+    {
+        ModbusRegisterInfo clone = new ModbusRegisterInfo();
+        clone.address = this.address;
+        clone.gatewayIPAddress = this.gatewayIPAddress;
+        clone.gatewayPort = this.gatewayPort;
+        clone.gatewayProtocol = this.gatewayProtocol;
+        clone.requestGapMillis = this.requestGapMillis;
+        clone.requestTimeoutMillis = this.requestTimeoutMillis;
+        clone.slaveId = this.slaveId;
+        clone.xlator = this.xlator.clone();
+        clone.serialParameters = this.serialParameters;
+        return clone;
+    }
 }

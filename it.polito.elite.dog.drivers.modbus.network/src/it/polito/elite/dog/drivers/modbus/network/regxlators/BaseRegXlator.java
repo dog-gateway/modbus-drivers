@@ -327,6 +327,11 @@ public class BaseRegXlator
         return scaleFactor;
     }
 
+    public void setRegisterSize(DataSizeEnum size)
+    {
+        this.registerSize = size;
+    }
+
     /**
      * @return the unitOfMeasure
      */
@@ -437,6 +442,22 @@ public class BaseRegXlator
         else if (!unitOfMeasure.equals(other.unitOfMeasure))
             return false;
         return true;
+    }
+
+    /**
+     * Create a deep clone of this {@link BaseRegXlator} instance.
+     */
+    public BaseRegXlator clone()
+    {
+        // create a basic clone
+        BaseRegXlator clone = new BaseRegXlator(this.registerSize,
+                this.registerType, this.byteOrder, this.wordOrder,
+                this.doubleWordOrder, this.bit);
+        // clone the scale factor
+        clone.scaleFactor = this.scaleFactor;
+        // scale the unit of measure
+        clone.unitOfMeasure = this.unitOfMeasure;
+        return clone;
     }
 
     // ------- PRIVATE METHODS ------------
@@ -566,7 +587,7 @@ public class BaseRegXlator
             {
                 case UINT16:
                 {
-                    result = (int) (registerBytesValue.getShort() & 0xffff);
+                    result =  ((int)registerBytesValue.getShort()) & 0xffff;
                     break;
                 }
                 case INT16:
@@ -577,7 +598,7 @@ public class BaseRegXlator
 
                 case UINT32:
                 {
-                    result = (long) (registerBytesValue.getInt() & 0xffffffff);
+                    result = ((long) registerBytesValue.getInt()) & 0xffffffffL;
                     break;
                 }
 
@@ -723,7 +744,7 @@ public class BaseRegXlator
     private Register[] toRegisters(Object value, Object oldValue)
     {
         // the bytes to include in the registers
-        byte[] registerBytes = new byte[this.registerSize.getNBits()];
+        byte[] registerBytes = new byte[this.registerSize.getNBytes()];
 
         // the ByteBuffer to fill with the value
         ByteBuffer buffer = ByteBuffer.wrap(registerBytes);
@@ -850,12 +871,12 @@ public class BaseRegXlator
             // registers are 2-byte long
             if (this.byteOrder == OrderEnum.BIG_ENDIAN)
             {
-                beRegisters[i] = new SimpleRegister(registerBytes[i],
+                beRegisters[i / 2] = new SimpleRegister(registerBytes[i],
                         registerBytes[i + 1]);
             }
             else
             {
-                beRegisters[i] = new SimpleRegister(registerBytes[i + 1],
+                beRegisters[i / 2] = new SimpleRegister(registerBytes[i + 1],
                         registerBytes[i]);
             }
         }

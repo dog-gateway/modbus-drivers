@@ -69,6 +69,15 @@ public enum DataSizeEnum
     {
         return this.nRegisters;
     }
+    
+    /**
+     * Provides the length of the register in bytes.
+     * @return The length of the register in bytes.
+     */
+    public int getNBytes()
+    {
+        return this.nRegisters*2;
+    }
 
     /**
      * Converts a {@link String} to a {@link DataSizeEnum} value.
