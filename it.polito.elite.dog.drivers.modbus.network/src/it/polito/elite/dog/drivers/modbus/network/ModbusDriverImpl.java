@@ -820,19 +820,19 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         }
         driverRegisters.add(register);
 
-        synchronized (this)
+        // fill the server to register map
+        Set<ModbusRegisterInfo> registers = this.gatewayAddress2Registers
+                .get(register.getGatewayIdentifier());
+        if (registers == null)
         {
-            // fill the server to register map
-            Set<ModbusRegisterInfo> registers = this.gatewayAddress2Registers
-                    .get(register.getGatewayIdentifier());
-            if (registers == null)
-            {
-                // create the new entry
-                registers = new TreeSet<ModbusRegisterInfo>();
-                this.gatewayAddress2Registers
-                        .put(register.getGatewayIdentifier(), registers);
-            }
+            // create the new entry
+            registers = new TreeSet<ModbusRegisterInfo>();
+            this.gatewayAddress2Registers.put(register.getGatewayIdentifier(),
+                    registers);
+        }
 
+        synchronized (this.connectionPool)
+        {
             // handle the modbus connection
             if (!this.connectionPool
                     .containsKey(register.getGatewayIdentifier()))
@@ -854,29 +854,32 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 }
 
             }
+        }
 
-            // check if a poller is already available or not
-            ModbusPoller poller = this.pollerPool
-                    .get(register.getGatewayIdentifier());
+        // check if a poller is already available or not
+        ModbusPoller poller = this.pollerPool
+                .get(register.getGatewayIdentifier());
 
-            // if no poller is currently handling the gateway, then create a new
-            // one
-            if (poller == null)
-            {
-                // create a new poller
-                poller = new ModbusPoller(this,
-                        register.getGatewayIdentifier());
+        // if no poller is currently handling the gateway, then create a new
+        // one
+        if (poller == null)
+        {
+            // create a new poller
+            poller = new ModbusPoller(this, register.getGatewayIdentifier());
 
-                // add the thread to the poller pool
-                this.pollerPool.put(register.getGatewayIdentifier(), poller);
+            // add the thread to the poller pool
+            this.pollerPool.put(register.getGatewayIdentifier(), poller);
 
-                // start polling
-                poller.start();
-            }
+            // start polling
+            poller.start();
+        }
 
-            // add the register entry
+        // add the register entry
+        if (registers != null)
+        {
             registers.add(register);
         }
+
     }
 
     /*
@@ -981,8 +984,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         // stop any pending reconnection attempt
                         this.logger.debug(
                                 "Removing pending reconnection attempts");
-                        this.activeReconnectionTimers
+                        Future<?> pendingTimer = this.activeReconnectionTimers
                                 .remove(register.getGatewayIdentifier());
+                        // cancel the timer
+                        pendingTimer.cancel(true);
 
                         // stop / delete the poller as no register shall be read
                         // from the given gateway address.
@@ -1103,6 +1108,14 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                                         this.betweenTrialTimeMillis,
                                         TimeUnit.MILLISECONDS);
 
+                        // stop any pending timer for the same gateway
+                        Future<?> pendingTimer = this.activeReconnectionTimers.remove(gwIdentifier);
+                        
+                        if(pendingTimer!=null)
+                        {
+                            pendingTimer.cancel(true);
+                        }
+                        
                         // store the future
                         this.activeReconnectionTimers.put(gwIdentifier,
                                 reconnectionTaskResult);
