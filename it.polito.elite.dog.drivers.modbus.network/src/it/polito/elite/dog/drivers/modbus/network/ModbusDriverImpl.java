@@ -986,8 +986,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                                 "Removing pending reconnection attempts");
                         Future<?> pendingTimer = this.activeReconnectionTimers
                                 .remove(register.getGatewayIdentifier());
-                        // cancel the timer
-                        pendingTimer.cancel(true);
+                        if (pendingTimer != null)
+                        {
+                            // cancel the timer
+                            pendingTimer.cancel(true);
+                        }
 
                         // stop / delete the poller as no register shall be read
                         // from the given gateway address.
@@ -1109,13 +1112,14 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                                         TimeUnit.MILLISECONDS);
 
                         // stop any pending timer for the same gateway
-                        Future<?> pendingTimer = this.activeReconnectionTimers.remove(gwIdentifier);
-                        
-                        if(pendingTimer!=null)
+                        Future<?> pendingTimer = this.activeReconnectionTimers
+                                .remove(gwIdentifier);
+
+                        if (pendingTimer != null)
                         {
                             pendingTimer.cancel(true);
                         }
-                        
+
                         // store the future
                         this.activeReconnectionTimers.put(gwIdentifier,
                                 reconnectionTaskResult);
