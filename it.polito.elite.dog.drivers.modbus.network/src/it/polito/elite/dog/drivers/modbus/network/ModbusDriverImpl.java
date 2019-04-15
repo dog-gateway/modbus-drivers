@@ -986,6 +986,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                                 "Removing pending reconnection attempts");
                         Future<?> pendingTimer = this.activeReconnectionTimers
                                 .remove(register.getGatewayIdentifier());
+
+                        // avoid null pointer exception
                         if (pendingTimer != null)
                         {
                             // cancel the timer
@@ -999,7 +1001,12 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                                 register.getGatewayIdentifier());
                         ModbusPoller pollerToStop = this.pollerPool
                                 .get(register.getGatewayIdentifier());
-                        pollerToStop.setRunnable(false);
+
+                        // check not null
+                        if (pollerToStop != null)
+                        {
+                            pollerToStop.setRunnable(false);
+                        }
 
                         // log
                         this.logger.debug("Removing poller for: {}",
