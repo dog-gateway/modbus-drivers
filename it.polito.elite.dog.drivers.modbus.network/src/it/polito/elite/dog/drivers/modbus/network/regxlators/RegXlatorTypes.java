@@ -20,6 +20,18 @@ package it.polito.elite.dog.drivers.modbus.network.regxlators;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator2ByteIntegerInput;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator2ByteUnsignedIntegerInput;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteFloatHolding;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteFloatHoldingBE;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteFloatInput;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteFloatInputBE;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteIntegerHolding;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteIntegerHoldingBE;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteIntegerInput;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlator4ByteIntegerInputBE;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.specific.RegXlatorBooleanCoil;
+
 /**
  * A class for managing RegTranslator types, naming is partially derived from
  * the KNX specification
@@ -105,7 +117,7 @@ public class RegXlatorTypes
 	 * @param regXlator The translator class
 	 * @param description The translator description
 	 */
-	public static void addTranslator(int type, Class<? extends RegXlator> regXlator, String description)
+	public static void addTranslator(int type, Class<? extends BaseRegXlator> regXlator, String description)
 	{
 		types.put(type, new RegXlatorType(type, regXlator, description));
 	}
@@ -134,9 +146,9 @@ public class RegXlatorTypes
 	 * @param typeId the id of the {@link RegXlator} type to be created.
 	 * @return the new instance of {@link RegXlator}, specific for the given type.
 	 */
-	public static RegXlator createRegXlator(int typeId)
+	public static BaseRegXlator createRegXlator(int typeId)
 	{
-		RegXlator xlator = null;
+	    BaseRegXlator xlator = null;
 		RegXlatorType type = types.get(typeId);
 		
 		if(type!=null)

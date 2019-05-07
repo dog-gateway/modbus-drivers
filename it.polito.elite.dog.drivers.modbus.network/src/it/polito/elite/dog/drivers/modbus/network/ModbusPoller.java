@@ -17,7 +17,6 @@
  */
 package it.polito.elite.dog.drivers.modbus.network;
 
-import it.polito.elite.dog.core.library.util.LogHelper;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import net.wimpi.modbus.Modbus;
@@ -29,6 +28,8 @@ import net.wimpi.modbus.msg.ModbusRequest;
 import net.wimpi.modbus.msg.ModbusResponse;
 import net.wimpi.modbus.net.MasterConnection;
 
+import org.osgi.service.log.Logger;
+
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -36,14 +37,11 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 
-import org.osgi.service.log.LogService;
-
 /**
- * Merged changes suggested by Claudio Degioanni for efficient handling of
- * multiple gateways (some of which might be failing), added suggested changes
- * from carloVentrella and Davide Conzon
+ * A poller thread dedicated to a single Modbus gateway, be it a serial port, or
+ * a remote network-level gateway.
  * 
- * Last updated on 04/11/2016.
+ * Last updated on 13/03/2019.
  * 
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>, Politecnico
  *         di Torino<br/>
@@ -60,13 +58,13 @@ public class ModbusPoller extends Thread
     private ModbusDriverImpl driver;
 
     // reference to the address of the gateway to poll
-    private InetAddress gatewayAddress;
+    private String gatewayIdentifier;
 
     // the runnable flag
     private boolean runnable = true;
 
     // the poller logger
-    private LogHelper logger;
+    private Logger logger;
 
     // the log identifier, unique for the class
     public static String logId = "[ModbusPoller]: ";
@@ -79,16 +77,17 @@ public class ModbusPoller extends Thread
     public Map<ModbusRegisterInfo, Integer> blacklist;
 
     public ModbusPoller(ModbusDriverImpl modbusDriverImpl,
-            InetAddress gwAddress)
+            String gatewayIdentifier)
     {
         // store a reference to the poller driver
         this.driver = modbusDriverImpl;
 
         // init the logger
-        this.logger = this.driver.getLogger();
+        this.logger = this.driver.getLoggerFactory()
+                .getLogger(ModbusPoller.class);
 
         // store the gateway address
-        this.gatewayAddress = gwAddress;
+        this.gatewayIdentifier = gatewayIdentifier;
 
         // init the blacklist
         this.blacklist = new HashMap<ModbusRegisterInfo, Integer>();
@@ -111,12 +110,11 @@ public class ModbusPoller extends Thread
         while (this.runnable)
         {
             // log
-            this.logger.log(LogService.LOG_DEBUG,
-                    ModbusPoller.logId + "Starting a new polling cycle...");
+            this.logger.debug("Starting a new polling cycle...");
 
             // get the set of datapoints and read
             Set<ModbusRegisterInfo> registers = this.driver
-                    .getGatewayRegisters(this.gatewayAddress);
+                    .getGatewayRegisters(this.gatewayIdentifier);
 
             // check not null
             if (registers != null)
@@ -128,9 +126,8 @@ public class ModbusPoller extends Thread
                 this.filterRegisters(registers);
 
                 // debug the number of read registers
-                this.logger.log(LogService.LOG_DEBUG,
-                        ModbusPoller.logId + "Reading " + registers.size() + "/"
-                                + allRegisters + " registers");
+                this.logger.debug("Trying to read " + registers.size() + "/"
+                        + allRegisters + " registers");
 
                 // read the registers and retrieve any "broken" or "unreadable"
                 // register
@@ -153,8 +150,7 @@ public class ModbusPoller extends Thread
             catch (InterruptedException e)
             {
                 // log the error
-                this.logger.log(LogService.LOG_WARNING,
-                        ModbusPoller.logId + "Interrupted exception: " + e);
+                this.logger.warn("Interrupted exception: " + e);
             }
 
         }
@@ -189,8 +185,7 @@ public class ModbusPoller extends Thread
             if (cycles_passed == 0)
             {
                 // debug
-                this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId
-                        + max_time_in_blacklist
+                this.logger.debug(max_time_in_blacklist
                         + " cycles are passed, removing from blacklist reg: "
                         + register.getAddress() + " (slaveId "
                         + register.getSlaveId() + ")");
@@ -207,14 +202,12 @@ public class ModbusPoller extends Thread
         }
 
         // debug
-        this.logger.log(LogService.LOG_DEBUG, ModbusPoller.logId
-                + brokenRegisters.size() + " new broken registers");
+        this.logger.debug(brokenRegisters.size() + " new broken registers");
 
         // debug
         if (brokenRegisters.size() == 0)
         {
-            this.logger.log(LogService.LOG_DEBUG,
-                    ModbusPoller.logId + " no broken registers");
+            this.logger.debug(" no broken registers");
         }
         else
         {
@@ -222,10 +215,8 @@ public class ModbusPoller extends Thread
             for (ModbusRegisterInfo register2 : brokenRegisters)
             {
                 // debug
-                this.logger.log(LogService.LOG_DEBUG,
-                        ModbusPoller.logId + " broken reg: "
-                                + register2.getAddress() + " (slaveId "
-                                + register2.getSlaveId() + ")");
+                this.logger.debug(" broken reg: " + register2.getAddress()
+                        + " (slaveId " + register2.getSlaveId() + ")");
                 // add the current broken register to the blacklist
                 this.blacklist.put(register2, max_time_in_blacklist);
             }
@@ -311,24 +302,31 @@ public class ModbusPoller extends Thread
             }
 
             // parse the protocol variant
-            ModbusProtocolVariant variant = ModbusProtocolVariant
-                    .valueOf(mInfo.getGatewayProtocol());
+            ModbusProtocolVariant variant = mInfo.getGatewayProtocol();
+
+            // get the gateway identifier
+            String gwIdentifier = mInfo.getGatewayIdentifier();
 
             // prepare the connection to the gateway offering access to the
             // given register
             MasterConnection modbusConnection = this.driver.getConnectionPool()
-                    .get(gwAddress);
+                    .get(gwIdentifier);
 
             if ((modbusConnection != null) && (modbusConnection.isConnected()))
             {
                 // successfully connected
-                this.logger.log(LogService.LOG_DEBUG, ModbusDriverImpl.logId
-                        + "Successfully connected to the Modbus TCP Slave");
+                this.logger.debug(
+                        "Successfully connected to the Modbus TCP Slave");
 
                 synchronized (registers)
                 {
-                    for (ModbusRegisterInfo register : registers)
+                    // iterate in order
+                    Iterator<ModbusRegisterInfo> regIterator = registers
+                            .iterator();
+                    while (regIterator.hasNext())
                     {
+                        ModbusRegisterInfo register = regIterator.next();
+
                         // prepare the read request using the register
                         // translator
                         // for composing the right Modbus request...
@@ -353,39 +351,54 @@ public class ModbusPoller extends Thread
                             // get the readResponse
                             ModbusResponse response = transaction.getResponse();
 
-                            // debug
-                            String responseAsString = response.getHexMessage();
-                            this.logger.log(LogService.LOG_DEBUG,
-                                    ModbusDriverImpl.logId + "Received -> "
-                                            + responseAsString);
-
-                            // translate the readResponse
-                            register.getXlator().setReadResponse(response);
-
-                            this.logger.log(LogService.LOG_DEBUG,
-                                    ModbusDriverImpl.logId
-                                            + "Translated into -> "
-                                            + register.getXlator().getValue());
-
-                            // dispatch the new message...
-                            ModbusDriverInstance driver = this.driver
-                                    .getRegister2Driver().get(register);
-                            if (driver != null)
+                            // response might be null if the transaction fails
+                            if (response != null)
                             {
-                                driver.newMessageFromHouse(register,
-                                        register.getXlator().getValue());
-                            }
 
-                            // successful read operation!
-                            read = true;
+                                // debug
+                                String responseAsString = response
+                                        .getHexMessage();
+                                this.logger.debug(
+                                        "Received -> " + responseAsString);
+
+                                this.logger.debug("Translated into -> "
+                                        + register.getXlator()
+                                                .getValue(response));
+
+                                // dispatch the new message...
+                                // TODO: check if this shall be done
+                                // asynchronously
+                                Set<ModbusDriverInstance> drivers = this.driver
+                                        .getRegister2Driver().get(register);
+                                if (drivers != null)
+                                {
+                                    for (ModbusDriverInstance driver : drivers)
+                                    {
+                                        driver.newMessageFromHouse(register,
+                                                register.getXlator()
+                                                        .getValue(response));
+                                    }
+                                }
+
+                                // successful read operation!
+                                read = true;
+                            }
+                            else
+                            {
+                                // close the connection
+                                modbusConnection.close();
+                                // remove the connection from the connection
+                                // pool
+                                this.driver.getConnectionPool()
+                                        .remove(gwIdentifier);
+                            }
 
                         }
                         catch (ModbusIOException e)
                         {
                             // debug
-                            this.logger.log(LogService.LOG_ERROR,
-                                    ModbusDriverImpl.logId
-                                            + "Error on Modbus I/O communication for register "
+                            this.logger.debug(
+                                    "Error on Modbus I/O communication for register "
                                             + register + "\nException: " + e);
 
                             // close the connection
@@ -394,9 +407,8 @@ public class ModbusPoller extends Thread
                         catch (ModbusSlaveException e)
                         {
                             // debug
-                            this.logger.log(LogService.LOG_ERROR,
-                                    ModbusDriverImpl.logId
-                                            + "Error on Modbus Slave, for register "
+                            this.logger.error(
+                                    "Error on Modbus Slave, for register "
                                             + register + "\nException: " + e);
                             // close the connection
                             modbusConnection.close();
@@ -404,9 +416,8 @@ public class ModbusPoller extends Thread
                         catch (ModbusException e)
                         {
                             // debug
-                            this.logger.log(LogService.LOG_ERROR,
-                                    ModbusDriverImpl.logId
-                                            + "Error on Modbus while reading register "
+                            this.logger.error(
+                                    "Error on Modbus while reading register "
                                             + register + "\nException: " + e);
                             // close the connection
                             modbusConnection.close();
@@ -424,32 +435,38 @@ public class ModbusPoller extends Thread
 
                         // stop this polling cycle if the connection is closed
                         if (!modbusConnection.isConnected())
+                        {
+                            // info on port usage
+                            this.logger.info("Trigger reconnection to: {}",
+                                    gwIdentifier);
+
+                            // close and re-open
+                            this.driver.closeAndReOpen(gwIdentifier, gwAddress,
+                                    gwPort, variant,
+                                    mInfo.getSerialParameters());
                             break;
+                        }
 
                         try
                         {
                             // minimum time between subsequent register read
-                            Thread.sleep(
-                                    ModbusPoller.MINIMUM_TIME_BETWEEN_REGISTER_READS);
+                            Thread.sleep((register.getRequestGapMillis() > 0)
+                                    ? register.getRequestGapMillis()
+                                    : ModbusDriverImpl.DEFAULT_REQUEST_GAP_MILLIS);
                         }
                         catch (InterruptedException e)
                         {
                             // log the exception
-                            this.logger.log(LogService.LOG_WARNING,
-                                    "ModbusPoller was interrupted", e);
+                            this.logger.warn(
+                                    "ModbusPoller was interrupted:\n {}", e);
                         }
                     }
                 }
             }
             else
             {
-                // info on port usage
-                this.logger.log(LogService.LOG_INFO,
-                        ModbusDriverImpl.logId + "Using port: " + gwPort);
-
-                // close and re-open
-                this.driver.closeAndReOpen(gwAddress, gwPort, variant,
-                        mInfo.getSerialParameters());
+                this.logger.warn("The gateway {} is currently unreachable.",
+                        gwIdentifier);
             }
         }
 

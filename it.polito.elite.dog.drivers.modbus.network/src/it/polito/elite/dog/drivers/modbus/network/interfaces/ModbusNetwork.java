@@ -17,65 +17,78 @@
  */
 package it.polito.elite.dog.drivers.modbus.network.interfaces;
 
-import java.util.Set;
-
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 
-
-
 /**
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
- * @see <a href="http://elite.polito.it">http://elite.polito.it</a> 
+ * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  *
  * @since Jan 18, 2012
  */
 public interface ModbusNetwork
 {
-	/**
-	 * Read the current value associated to the given register...
-	 * 
-	 * @param register
-	 *            the register unique identifier.
-	 */
-	public void read(ModbusRegisterInfo register);
-	
-	/**
-	 * Read the current value of all the registers included in the given set
-	 * 
-	 * @param registers The {@link Set}<{@link ModbusRegisterInfo}> of register to read.
-	 */
-	public void readAll(Set<ModbusRegisterInfo> registers);
-	
-	/**
-	 * Writes a given command to a given Modbus register
-	 * 
-	 * @param register
-	 *            the register unique identifier.
-	 * @param commandValue
-	 *            the command value to send.
-	 */
-	public void write(ModbusRegisterInfo register, String commandValue);
-	
-	/**
-	 * Adds a new device-specific driver for the given register
-	 * @param register
-	 *            the register unique identifier.
-	 * @param driver the {@link ModbusDriverInstance} instance to add.
-	 */
-	public void addDriver(ModbusRegisterInfo register, ModbusDriverInstance driver);
-	
-	/**
-	 * Removes a device-specific driver for the given register
-	 * @param register
-	 *            the register unique identifier.
-	 */
-	public void removeDriver(ModbusRegisterInfo register);
-	
-	/**
-	 * Removes the driver-register associations for the given driver. To be called when a specific driver disconnects
-	 * 
-	 * @param datapoint
-	 */
-	public void removeDriver(ModbusDriverInstance driver);
+    /**
+     * Read the current value associated to the given register...
+     * 
+     * @param register
+     *            the register unique identifier.
+     * @return a String representation of the register value.
+     */
+    public Object read(ModbusRegisterInfo register,
+            ModbusDriverInstance driver);
+
+    /**
+     * Writes a given command to a given Modbus register
+     * 
+     * @param register
+     *            the register unique identifier.
+     * @param commandValue
+     *            the command value to send.
+     * @return true if the command was successfully written, false otherwise.
+     */
+    public boolean write(ModbusRegisterInfo register, Object commandValue);
+
+    /**
+     * Writes a given command to a given Modbus register
+     * 
+     * @param register
+     *            the register unique identifier.
+     * @param commandValue
+     *            the command value to send.
+     * 
+     * @return true if the command was successfully written, false otherwise.
+     */
+    public boolean writeBit(ModbusRegisterInfo register, Object commandValue,
+            Object currentRegisterValue);
+
+    /**
+     * Adds a new device-specific driver for the given register
+     * 
+     * @param register
+     *            the register unique identifier.
+     * @param driver
+     *            the {@link ModbusDriverInstance} instance to add.
+     */
+    public void addDriver(ModbusRegisterInfo register,
+            ModbusDriverInstance driver);
+
+    /**
+     * Removes a device-specific driver for the given register
+     * 
+     * @param register
+     *            the register unique identifier.
+     * @param driver
+     *            the {@link ModbusDriverInstance} instance to remove.
+     */
+    public void removeDriver(ModbusRegisterInfo register,
+            ModbusDriverInstance driver);
+
+    /**
+     * Removes the driver-register associations for the given driver. To be
+     * called when a specific driver disconnects
+     * 
+     * @param datapoint
+     */
+    public void removeDriver(ModbusDriverInstance driver);
 }

@@ -75,7 +75,7 @@ public class ModbusOnOffDeviceDriverInstance extends ModbusDriverInstance
         // read the initial state (should be just one...)
         for (ModbusRegisterInfo register : this.register2Notification.keySet())
         {
-            this.network.read(register);
+            this.network.read(register, this);
         }
     }
 
@@ -123,15 +123,15 @@ public class ModbusOnOffDeviceDriverInstance extends ModbusDriverInstance
 
     @Override
     public void newMessageFromHouse(ModbusRegisterInfo dataPointInfo,
-            String value)
+            Object value)
     {
-        if ((value != null) && (!value.isEmpty()))
+        if ((value != null) && (value instanceof Boolean))
         {
-            if (value.equalsIgnoreCase("true"))
+            if ((Boolean) value)
             {
                 this.changeCurrentState(OnOffState.ON);
             }
-            else if (value.equalsIgnoreCase("false"))
+            else
             {
                 this.changeCurrentState(OnOffState.OFF);
             }

@@ -107,65 +107,66 @@ public class ModbusGatewayInfo
             if ((gatewayPortSet != null) && (!gatewayPortSet.isEmpty()))
                 info.setTcpPort(gatewayPortSet.iterator().next());
 
-            // get the gateway protocol if exists
-            if ((gatewayProtocolSet != null) && (!gatewayProtocolSet.isEmpty()))
-                info.setProtocolVariant(gatewayProtocolSet.iterator().next());
+        }
 
-            // Only if the port name is indicated (for serial port connections)
-            // the other serial parameters are verified
-            if ((portNameSet != null) && (!portNameSet.isEmpty()))
+        // get the gateway protocol if exists
+        if ((gatewayProtocolSet != null) && (!gatewayProtocolSet.isEmpty()))
+            info.setProtocolVariant(gatewayProtocolSet.iterator().next());
+
+        // Only if the port name is indicated (for serial port connections)
+        // the other serial parameters are verified
+        if ((portNameSet != null) && (!portNameSet.isEmpty()))
+        {
+            info.getSerialParameters()
+                    .setPortName(portNameSet.iterator().next());
+
+            // get the baud rate if exists
+            String baudRate = ModbusGatewayDefault.DEFAULT_BAUD_RATE;
+            if ((baudRateSet != null) && (!baudRateSet.isEmpty()))
             {
-                info.getSerialParameters()
-                        .setPortName(portNameSet.iterator().next());
-
-                // get the baud rate if exists
-                String baudRate = ModbusGatewayDefault.DEFAULT_BAUD_RATE;
-                if ((baudRateSet != null) && (!baudRateSet.isEmpty()))
-                {
-                    baudRate = baudRateSet.iterator().next();
-                }
-                info.getSerialParameters().setBaudRate(baudRate);
-
-                // get the data bits if exists
-                String dataBits = ModbusGatewayDefault.DEFAULT_DATA_BITS;
-                if ((dataBitsSet != null) && (!dataBitsSet.isEmpty()))
-                {
-                    dataBits = dataBitsSet.iterator().next();
-                }
-                info.getSerialParameters().setDatabits(dataBits);
-
-                // get the parity if exists
-                String parity = ModbusGatewayDefault.DEFAULT_PARITY;
-                if ((paritySet != null) && (!paritySet.isEmpty()))
-                {
-                    parity = paritySet.iterator().next();
-                }
-                info.getSerialParameters().setParity(parity);
-
-                // get the stop bits if exists
-                String stopBits = ModbusGatewayDefault.DEFAULT_STOP_BITS;
-                if ((stopBitsSet != null) && (!stopBitsSet.isEmpty()))
-                {
-                    stopBits = stopBitsSet.iterator().next();
-                }
-                info.getSerialParameters().setStopbits(stopBits);
-
-                // get the encoding if exists
-                String encoding = ModbusGatewayDefault.DEFAULT_ENCODING;
-                if ((encodingSet != null) && (!encodingSet.isEmpty()))
-                {
-                    encoding = encodingSet.iterator().next();
-                }
-                info.getSerialParameters().setEncoding(encoding);
-
-                // get the echo if exists
-                String echo = ModbusGatewayDefault.DEFAULT_ECHO;
-                if ((echoSet != null) && (!echoSet.isEmpty()))
-                {
-                    echo = echoSet.iterator().next();
-                }
-                info.getSerialParameters().setEcho(Boolean.parseBoolean(echo));
+                baudRate = baudRateSet.iterator().next();
             }
+            info.getSerialParameters().setBaudRate(baudRate);
+
+            // get the data bits if exists
+            String dataBits = ModbusGatewayDefault.DEFAULT_DATA_BITS;
+            if ((dataBitsSet != null) && (!dataBitsSet.isEmpty()))
+            {
+                dataBits = dataBitsSet.iterator().next();
+            }
+            info.getSerialParameters().setDatabits(dataBits);
+
+            // get the parity if exists
+            String parity = ModbusGatewayDefault.DEFAULT_PARITY;
+            if ((paritySet != null) && (!paritySet.isEmpty()))
+            {
+                parity = paritySet.iterator().next();
+            }
+            info.getSerialParameters().setParity(parity);
+
+            // get the stop bits if exists
+            String stopBits = ModbusGatewayDefault.DEFAULT_STOP_BITS;
+            if ((stopBitsSet != null) && (!stopBitsSet.isEmpty()))
+            {
+                stopBits = stopBitsSet.iterator().next();
+            }
+            info.getSerialParameters().setStopbits(stopBits);
+
+            // get the encoding if exists
+            String encoding = ModbusGatewayDefault.DEFAULT_ENCODING;
+            if ((encodingSet != null) && (!encodingSet.isEmpty()))
+            {
+                encoding = encodingSet.iterator().next();
+            }
+            info.getSerialParameters().setEncoding(encoding);
+
+            // get the echo if exists
+            String echo = ModbusGatewayDefault.DEFAULT_ECHO;
+            if ((echoSet != null) && (!echoSet.isEmpty()))
+            {
+                echo = echoSet.iterator().next();
+            }
+            info.getSerialParameters().setEcho(Boolean.parseBoolean(echo));
         }
 
         return info;

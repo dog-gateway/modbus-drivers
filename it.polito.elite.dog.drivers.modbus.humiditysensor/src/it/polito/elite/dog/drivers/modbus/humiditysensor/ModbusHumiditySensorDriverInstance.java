@@ -132,9 +132,9 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance
      * .ModbusRegisterInfo, java.lang.String)
      */
     @Override
-    public void newMessageFromHouse(ModbusRegisterInfo register, String value)
+    public void newMessageFromHouse(ModbusRegisterInfo register, Object value)
     {
-        if (value != null)
+        if (value != null && value instanceof DecimalMeasure)
         {
             // gets the corresponding notification set...
             Set<CNParameters> notificationInfos = this.register2Notification
@@ -157,14 +157,13 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance
                     // log notification
                     this.logger.debug("Device: " + this.device.getDeviceId()
                             + " is notifying " + notificationName + " value:"
-                            + register.getXlator().getValue());
+                            + value);
                     // get the method
 
                     Method notify = ModbusHumiditySensorDriverInstance.class
                             .getDeclaredMethod(notifyMethod, Measure.class);
                     // invoke the method
-                    notify.invoke(this, DecimalMeasure
-                            .valueOf(register.getXlator().getValue()));
+                    notify.invoke(this, value);
                 }
                 catch (Exception e)
                 {
@@ -255,9 +254,6 @@ public class ModbusHumiditySensorDriverInstance extends ModbusDriverInstance
         this.currentState.setState(
                 HumidityMeasurementState.class.getSimpleName(),
                 new HumidityMeasurementState(pValue));
-
-        // read the initial state
-        this.network.readAll(this.register2Notification.keySet());
     }
 
     @Override
