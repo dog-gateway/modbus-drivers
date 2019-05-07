@@ -374,9 +374,12 @@ public class ModbusPoller extends Thread
                                 {
                                     for (ModbusDriverInstance driver : drivers)
                                     {
+                                        // notify the value
                                         driver.newMessageFromHouse(register,
                                                 register.getXlator()
                                                         .getValue(response));
+                                        // set the device as reachable
+                                        driver.setReachable(register, true);
                                     }
                                 }
 
@@ -412,6 +415,7 @@ public class ModbusPoller extends Thread
                                             + register + "\nException: " + e);
                             // close the connection
                             modbusConnection.close();
+
                         }
                         catch (ModbusException e)
                         {
@@ -421,6 +425,7 @@ public class ModbusPoller extends Thread
                                             + register + "\nException: " + e);
                             // close the connection
                             modbusConnection.close();
+
                         }
                         finally
                         {
@@ -429,6 +434,9 @@ public class ModbusPoller extends Thread
                             if (read == false)
                             {
                                 brokenRegisters.add(register);
+
+                                // notify device unreachable
+                                this.notifyUnreachableRegister(register);
                             }
 
                         }
@@ -467,11 +475,37 @@ public class ModbusPoller extends Thread
             {
                 this.logger.warn("The gateway {} is currently unreachable.",
                         gwIdentifier);
+
+                // notify devices unreachable
+                // iterate in order
+                Iterator<ModbusRegisterInfo> regIterator = registers.iterator();
+                while (regIterator.hasNext())
+                {
+                    this.notifyUnreachableRegister(regIterator.next());
+                }
             }
         }
 
         // return the list of registers marked as "broken"
         return brokenRegisters;
 
+    }
+
+    private void notifyUnreachableRegister(ModbusRegisterInfo register)
+    {
+        // get the set of drivers to notify
+        Set<ModbusDriverInstance> drivers = this.driver.getRegister2Driver()
+                .get(register);
+        // if at least a driver is registered for the current
+        // register,
+        // iterate over the driver list
+        if (drivers != null)
+        {
+            for (ModbusDriverInstance driver : drivers)
+            {
+                // notify device unreachable
+                driver.setReachable(register, false);
+            }
+        }
     }
 }

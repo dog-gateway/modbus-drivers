@@ -17,6 +17,7 @@
  */
 package it.polito.elite.dog.drivers.modbus.network;
 
+import it.polito.elite.dog.core.library.model.AbstractDevice;
 import it.polito.elite.dog.core.library.model.CNParameters;
 import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
@@ -146,10 +147,26 @@ public abstract class ModbusDriverInstance extends
      * @param dataPointInfo
      *            The {@link DataPointInfo} instance representing the data point
      *            whose value has changed.
-     * @param string
+     * @param value
+     *            The value to notify.
      */
     public abstract void newMessageFromHouse(ModbusRegisterInfo dataPointInfo,
             Object value);
+
+    /**
+     * Notifies a device-specific driver of a currently unreachable register.
+     * This information may be used by the driver, e.g., to trigger a device
+     * registration update.
+     * 
+     * @param dataPointInfo
+     */
+    protected void setReachable(ModbusRegisterInfo dataPointInfo,
+            boolean reachable)
+    {
+        // TODO: handle the case of complex devices which are handling more than
+        // one register.
+        this.setDeviceOnline(reachable);
+    }
 
     /*
      * (non-Javadoc)
@@ -546,4 +563,15 @@ public abstract class ModbusDriverInstance extends
         return registerInfo;
     }
 
+    public void setDeviceOnline(boolean online)
+    {
+        if (this.device instanceof AbstractDevice)
+        {
+            AbstractDevice aDevice = ((AbstractDevice) this.device);
+            if (aDevice.isOnline() != online)
+            {
+                aDevice.setOnline(online);
+            }
+        }
+    }
 }
