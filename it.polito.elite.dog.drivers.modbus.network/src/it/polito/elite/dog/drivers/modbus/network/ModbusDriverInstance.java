@@ -563,7 +563,14 @@ public abstract class ModbusDriverInstance extends
         return registerInfo;
     }
 
-    public void setDeviceOnline(boolean online)
+    /**
+     * Sets the online flag of the device handled by this driver.
+     * 
+     * @param online
+     *            True if the device is connected and can be read, false
+     *            otherwise.
+     */
+    private void setDeviceOnline(boolean online)
     {
         if (this.device instanceof AbstractDevice)
         {
