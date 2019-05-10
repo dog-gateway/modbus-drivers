@@ -165,7 +165,7 @@ public class ModbusGatewayDriver implements Driver
     public void removedNetworkDriver(ModbusNetwork networkDriver)
     {
         // unregisters this driver from the OSGi framework
-        if (this.network.compareAndSet(networkDriver, null))
+        if (this.network!=null && this.network.compareAndSet(networkDriver, null))
             this.unRegister();
     }
 
