@@ -18,8 +18,9 @@
 package it.polito.elite.dog.drivers.modbus.lightsensor;
 
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
+import org.osgi.service.device.Device;
 
-import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.drivers.modbus.device.ModbusDeviceDriver;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
@@ -55,12 +56,12 @@ public class ModbusLightSensorDriver extends ModbusDeviceDriver
 
 	@Override
 	public ModbusDriverInstance createModbusDriverInstance(
-			ModbusNetwork modbusNetwork, ControllableDevice device,
+			ModbusNetwork modbusNetwork, 
 			String gatewayAddress, String gatewayPort, String gwProtocol,
-			SerialParameters serialParams, BundleContext context)
+			SerialParameters serialParams, BundleContext context, ServiceReference<Device> device)
 	{
-		return new ModbusLightSensorDriverInstance(modbusNetwork, device,
-				gatewayAddress, gatewayPort, gwProtocol, serialParams, context);
+		return new ModbusLightSensorDriverInstance(modbusNetwork, 
+				gatewayAddress, gatewayPort, gwProtocol, serialParams, context, device);
 	}
 
 }

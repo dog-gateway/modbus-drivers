@@ -2,14 +2,13 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: ModbusCo2SensorDriver
 Bundle-SymbolicName: it.polito.elite.dog.drivers.modbus.co2sensor
-Bundle-Version: 1.1.3
+Bundle-Version: 1.1.4
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Import-Package: it.polito.elite.dog.core.library.model;version="1.1.0",
  it.polito.elite.dog.core.library.model.devicecategory;version="1.1.0",
  it.polito.elite.dog.core.library.model.notification;version="1.1.0",
  it.polito.elite.dog.core.library.model.state;version="1.1.0",
  it.polito.elite.dog.core.library.model.statevalue;version="1.1.0",
- it.polito.elite.dog.core.library.util;version="1.1.0",
  it.polito.elite.dog.drivers.modbus.device,
  it.polito.elite.dog.drivers.modbus.gateway,
  it.polito.elite.dog.drivers.modbus.network,
@@ -25,3 +24,4 @@ Import-Package: it.polito.elite.dog.core.library.model;version="1.1.0",
  org.osgi.service.log;version="1.3.0"
 Service-Component: OSGI-INF/component.xml
 Bundle-ActivationPolicy: lazy
+Automatic-Module-Name: it.polito.elite.dog.drivers.modbus.co2sensor

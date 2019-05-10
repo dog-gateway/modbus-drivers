@@ -2,11 +2,12 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: ModbusNetworkDriver
 Bundle-SymbolicName: it.polito.elite.dog.drivers.modbus.network
-Bundle-Version: 1.1.4
+Bundle-Version: 1.2
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Import-Package: gnu.io;version="1.0.0",
  it.polito.elite.dog.core.library.model,
  it.polito.elite.dog.core.library.util,
+ javax.measure;version="4.3.1",
  net.wimpi.modbus,
  net.wimpi.modbus.cmd,
  net.wimpi.modbus.facade,
@@ -17,11 +18,15 @@ Import-Package: gnu.io;version="1.0.0",
  net.wimpi.modbus.util,
  org.osgi.framework;version="1.3.0",
  org.osgi.service.cm;version="1.5.0",
- org.osgi.service.log;version="1.3.0"
+ org.osgi.service.device;version="1.1.0",
+ org.osgi.service.log;version="1.3.0",
+ org.osgi.util.tracker;version="1.5.2"
 Bundle-ClassPath: .
 Export-Package: it.polito.elite.dog.drivers.modbus.network;version="1.0.0",
  it.polito.elite.dog.drivers.modbus.network.info;version="1.0.0",
  it.polito.elite.dog.drivers.modbus.network.interfaces;version="1.0.0",
+ it.polito.elite.dog.drivers.modbus.network.protocol,
  it.polito.elite.dog.drivers.modbus.network.regxlators;version="1.0.0"
 Service-Component: OSGI-INF/component.xml
 Bundle-ActivationPolicy: lazy
+Automatic-Module-Name: it.polito.elite.dog.drivers.modbus.network

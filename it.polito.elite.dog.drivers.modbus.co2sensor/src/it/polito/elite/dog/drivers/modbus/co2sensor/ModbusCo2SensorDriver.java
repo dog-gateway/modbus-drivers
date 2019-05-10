@@ -18,8 +18,9 @@
 package it.polito.elite.dog.drivers.modbus.co2sensor;
 
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
+import org.osgi.service.device.Device;
 
-import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.drivers.modbus.device.ModbusDeviceDriver;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
@@ -36,28 +37,29 @@ import net.wimpi.modbus.util.SerialParameters;
 public class ModbusCo2SensorDriver extends ModbusDeviceDriver
 {
 
-	/**
-	 * The class constructor, creates an instance of the
-	 * {@link ModbusCo2SensorDriver}
-	 * 
-	 */
-	public ModbusCo2SensorDriver()
-	{
-		// call the superclass constructor
-		super();
+    /**
+     * The class constructor, creates an instance of the
+     * {@link ModbusCo2SensorDriver}
+     * 
+     */
+    public ModbusCo2SensorDriver()
+    {
+        // call the superclass constructor
+        super();
 
-		// set the driver instance class
-		this.driverInstanceClass = ModbusCo2SensorDriverInstance.class;
-	}
+        // set the driver instance class
+        this.driverInstanceClass = ModbusCo2SensorDriverInstance.class;
+    }
 
-	@Override
-	public ModbusDriverInstance createModbusDriverInstance(
-			ModbusNetwork modbusNetwork, ControllableDevice device,
-			String gatewayAddress, String gatewayPort, String gwProtocol,
-			SerialParameters serialParameters, BundleContext context)
-	{
-		return new ModbusCo2SensorDriverInstance(modbusNetwork, device,
-				gatewayAddress, gatewayPort, gwProtocol, serialParameters, context);
-	}
+    @Override
+    public ModbusDriverInstance createModbusDriverInstance(
+            ModbusNetwork modbusNetwork, String gatewayAddress,
+            String gatewayPort, String gwProtocol,
+            SerialParameters serialParameters, BundleContext context,
+            ServiceReference<Device> device)
+    {
+        return new ModbusCo2SensorDriverInstance(modbusNetwork, gatewayAddress,
+                gatewayPort, gwProtocol, serialParameters, context, device);
+    }
 
 }

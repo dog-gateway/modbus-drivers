@@ -17,13 +17,14 @@
  */
 package it.polito.elite.dog.drivers.modbus.singlephaseactivepowermeter;
 
-import org.osgi.framework.BundleContext;
-
-import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.drivers.modbus.device.ModbusDeviceDriver;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import net.wimpi.modbus.util.SerialParameters;
+
+import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
+import org.osgi.service.device.Device;
 
 /**
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
@@ -33,27 +34,28 @@ import net.wimpi.modbus.util.SerialParameters;
 public class ModbusSinglePhaseActivePowerMeterDriver extends ModbusDeviceDriver
 {
 
-	/**
-	 * Create a driver instance (empty, will be initialized upon activation)
-	 */
-	public ModbusSinglePhaseActivePowerMeterDriver()
-	{
-		// call the superclass constructor
-		super();
+    /**
+     * Create a driver instance (empty, will be initialized upon activation)
+     */
+    public ModbusSinglePhaseActivePowerMeterDriver()
+    {
+        // call the superclass constructor
+        super();
 
-		// set the driver instance class
-		this.driverInstanceClass = ModbusSinglePhaseActivePowerMeterDriverInstance.class;
-	}
+        // set the driver instance class
+        this.driverInstanceClass = ModbusSinglePhaseActivePowerMeterDriverInstance.class;
+    }
 
-	@Override
-	public ModbusDriverInstance createModbusDriverInstance(
-			ModbusNetwork modbusNetwork, ControllableDevice device,
-			String gatewayAddress, String gatewayPort, String gwProtocol,
-			SerialParameters serialParams, BundleContext context)
-	{
-		return new ModbusSinglePhaseActivePowerMeterDriverInstance(
-				modbusNetwork, device, gatewayAddress, gatewayPort, gwProtocol,
-				serialParams, context);
-	}
+    @Override
+    public ModbusDriverInstance createModbusDriverInstance(
+            ModbusNetwork modbusNetwork, String gatewayAddress,
+            String gatewayPort, String gwProtocol,
+            SerialParameters serialParams, BundleContext context,
+            ServiceReference<Device> device)
+    {
+        return new ModbusSinglePhaseActivePowerMeterDriverInstance(
+                modbusNetwork, gatewayAddress, gatewayPort, gwProtocol,
+                serialParams, context, device);
+    }
 
 }

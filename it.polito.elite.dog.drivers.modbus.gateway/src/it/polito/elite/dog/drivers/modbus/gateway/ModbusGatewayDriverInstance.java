@@ -20,84 +20,96 @@ package it.polito.elite.dog.drivers.modbus.gateway;
 import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
 import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
-import it.polito.elite.dog.core.library.util.LogHelper;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import net.wimpi.modbus.util.SerialParameters;
 
 import org.osgi.framework.BundleContext;
-import org.osgi.service.log.LogService;
+import org.osgi.framework.ServiceReference;
+import org.osgi.service.device.Device;
+import org.osgi.service.log.Logger;
+import org.osgi.service.log.LoggerFactory;
 
 /**
  * @author <a href="mailto:dario.bonino@polito.it">Dario Bonino</a>
  * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  *
  */
-public class ModbusGatewayDriverInstance extends ModbusDriverInstance implements ModbusGateway
+public class ModbusGatewayDriverInstance extends ModbusDriverInstance
+        implements ModbusGateway
 {
-	// the driver logger
-	LogHelper logger;
-	
-	// the log identifier, unique for the class
-	public static String logId = "[ModbusGatewayDriverInstance]: ";
-	
-	public ModbusGatewayDriverInstance(ModbusNetwork network, ControllableDevice controllableDevice, String gatewayAddress, String gatewayPort, String protocolVariant, SerialParameters serialParameters,
-			BundleContext context)
-	{
-		super(network, controllableDevice, gatewayAddress, gatewayPort, protocolVariant, serialParameters);
-		
-		// create a logger
-		this.logger = new LogHelper(context);
-		
-		// create a new device state (according to the current DogOnt model, no
-		// state is actually associated to a Modbus gateway)
-		this.currentState = new DeviceStatus(device.getDeviceId());
-		
-		// connect this driver instance with the device
-		this.device.setDriver(this);
-	}
+    // the driver logger
+    Logger logger;
 
-	@Override
-	public synchronized DeviceStatus getState()
-	{
-		return this.currentState;
-	}
-	
-	//getGatewayAddress already implemented by the superclass...
+    // the log identifier, unique for the class
+    public static String logId = "[ModbusGatewayDriverInstance]: ";
 
-	@Override
-	public void newMessageFromHouse(ModbusRegisterInfo registerInfo, String string)
-	{
-		// currently no functionalities are associated to modbus gateways
-		// therefore they do not use any datapoint and they do not listen to the
-		// house messages...
-		
-		// just log
-		this.logger.log(LogService.LOG_INFO, ModbusGatewayDriverInstance.logId
-				+ "Received new message from house involving the register:\n " + registerInfo
-				+ "\n No operation is currently supported");
-		
-	}
-	
-	@Override
-	public void updateStatus()
-	{
-		// intentionally left empty
-		
-	}
+    public ModbusGatewayDriverInstance(ModbusNetwork network,
+            ServiceReference<Device> controllableDevice, String gatewayAddress,
+            String gatewayPort, String protocolVariant,
+            SerialParameters serialParameters, BundleContext context)
+    {
+        super(network, gatewayAddress, gatewayPort, protocolVariant,
+                serialParameters, context, controllableDevice);
 
-	@Override
-	protected void specificConfiguration()
-	{
-		// TODO Auto-generated method stub
-		
-	}
+        // create a logger
+        this.logger = context
+                .getService(context.getServiceReference(LoggerFactory.class))
+                .getLogger(ModbusGatewayDriverInstance.class);
 
-	@Override
-	protected void addToNetworkDriver(ModbusRegisterInfo register)
-	{
-		this.network.addDriver(register, this);
-		
-	}	
+    }
+
+    @Override
+    public synchronized DeviceStatus getState()
+    {
+        return this.currentState;
+    }
+
+    // getGatewayAddress already implemented by the superclass...
+
+    @Override
+    public void newMessageFromHouse(ModbusRegisterInfo registerInfo,
+            Object string)
+    {
+        // currently no functionalities are associated to modbus gateways
+        // therefore they do not use any datapoint and they do not listen to the
+        // house messages...
+
+        // just log
+        this.logger.info("Received new message from house involving the register:\n "
+                + registerInfo + "\n No operation is currently supported");
+
+    }
+
+    @Override
+    public void updateStatus()
+    {
+        // intentionally left empty
+
+    }
+
+    @Override
+    protected void specificConfiguration()
+    {
+        // TODO Auto-generated method stub
+
+    }
+
+    @Override
+    protected void addToNetworkDriver(ModbusRegisterInfo register)
+    {
+        this.network.addDriver(register, this);
+
+    }
+
+    @Override
+    protected void setUpDevice(ControllableDevice device)
+    {
+        // activate the device
+        this.device.setDriver(this);
+        // create a new device state (according to the current DogOnt model, no
+        // state is actually associated to a Modbus gateway)
+        this.currentState = new DeviceStatus(device.getDeviceId());
+    }
 }

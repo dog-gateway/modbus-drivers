@@ -18,8 +18,9 @@
 package it.polito.elite.dog.drivers.modbus.temperaturesensor;
 
 import org.osgi.framework.BundleContext;
+import org.osgi.framework.ServiceReference;
+import org.osgi.service.device.Device;
 
-import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.drivers.modbus.device.ModbusDeviceDriver;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
@@ -32,28 +33,29 @@ import net.wimpi.modbus.util.SerialParameters;
  */
 public class ModbusSingleTemperatureSensorDriver extends ModbusDeviceDriver
 {
-	/**
-	 * The class constructor, creates an instance of the
-	 * {@link ModbusSingleTemperatureSensorDriver}
-	 */
-	public ModbusSingleTemperatureSensorDriver()
-	{
-		// call the superclass constructor
-		super();
+    /**
+     * The class constructor, creates an instance of the
+     * {@link ModbusSingleTemperatureSensorDriver}
+     */
+    public ModbusSingleTemperatureSensorDriver()
+    {
+        // call the superclass constructor
+        super();
 
-		// set the driver instance class
-		this.driverInstanceClass = ModbusSingleTemperatureSensorDriverInstance.class;
-	}
+        // set the driver instance class
+        this.driverInstanceClass = ModbusSingleTemperatureSensorDriverInstance.class;
+    }
 
-	@Override
-	public ModbusDriverInstance createModbusDriverInstance(
-			ModbusNetwork modbusNetwork, ControllableDevice device,
-			String gatewayAddress, String gatewayPort, String gwProtocol,
-			SerialParameters serialParams, BundleContext context)
-	{
-		return new ModbusSingleTemperatureSensorDriverInstance(modbusNetwork,
-				device, gatewayAddress, gatewayPort, gwProtocol, serialParams,
-				context);
-	}
+    @Override
+    public ModbusDriverInstance createModbusDriverInstance(
+            ModbusNetwork modbusNetwork, String gatewayAddress,
+            String gatewayPort, String gwProtocol,
+            SerialParameters serialParams, BundleContext context,
+            ServiceReference<Device> device)
+    {
+        return new ModbusSingleTemperatureSensorDriverInstance(modbusNetwork,
+                gatewayAddress, gatewayPort, gwProtocol, serialParams, context,
+                device);
+    }
 
 }

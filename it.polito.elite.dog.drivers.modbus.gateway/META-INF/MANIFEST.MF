@@ -2,20 +2,22 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: ModbusGatewayDriver
 Bundle-SymbolicName: it.polito.elite.dog.drivers.modbus.gateway
-Bundle-Version: 1.1.3
+Bundle-Version: 1.1.4
 Bundle-RequiredExecutionEnvironment: JavaSE-1.6
 Import-Package: it.polito.elite.dog.core.library.model;version="1.1.0",
  it.polito.elite.dog.core.library.model.devicecategory;version="1.1.0",
  it.polito.elite.dog.core.library.model.state;version="1.1.0",
- it.polito.elite.dog.core.library.util;version="1.1.0",
  it.polito.elite.dog.drivers.modbus.network,
  it.polito.elite.dog.drivers.modbus.network.info,
  it.polito.elite.dog.drivers.modbus.network.interfaces,
+ it.polito.elite.dog.drivers.modbus.network.protocol,
  net.wimpi.modbus.util,
  org.osgi.framework;version="1.3.0",
  org.osgi.service.device;version="1.1.0",
- org.osgi.service.log;version="1.3.0"
+ org.osgi.service.log;version="1.3.0",
+ org.osgi.util.tracker;version="1.5.2"
 Export-Package: it.polito.elite.dog.drivers.modbus.device,
  it.polito.elite.dog.drivers.modbus.gateway;version="1.0.0"
 Service-Component: OSGI-INF/component.xml
 Bundle-ActivationPolicy: lazy
+Automatic-Module-Name: it.polito.elite.dog.drivers.modbus.gateway

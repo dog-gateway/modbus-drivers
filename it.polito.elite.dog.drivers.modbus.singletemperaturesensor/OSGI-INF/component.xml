@@ -3,4 +3,5 @@
    <implementation class="it.polito.elite.dog.drivers.modbus.temperaturesensor.ModbusSingleTemperatureSensorDriver"/>
    <reference bind="addedNetworkDriver" cardinality="1..1" interface="it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork" name="ModbusNetwork" policy="dynamic" unbind="removedNetworkDriver"/>
    <reference bind="addedGatewayDriver" cardinality="1..1" interface="it.polito.elite.dog.drivers.modbus.gateway.ModbusGatewayDriver" name="ModbusGatewayDriver" policy="static" unbind="removedGatewayDriver"/>
+   <reference bind="addedLoggerFactory" cardinality="1..1" interface="org.osgi.service.log.LoggerFactory" name="LoggerFactory" policy="static" unbind="removedLoggerFactory"/>
 </scr:component>
