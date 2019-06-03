@@ -355,36 +355,50 @@ public class ModbusPoller extends Thread
                             if (response != null)
                             {
 
-                                // debug
-                                String responseAsString = response
-                                        .getHexMessage();
-                                this.logger.debug(
-                                        "Received -> " + responseAsString);
-
-                                this.logger.debug("Translated into -> "
-                                        + register.getXlator()
-                                                .getValue(response));
-
-                                // dispatch the new message...
-                                // TODO: check if this shall be done
-                                // asynchronously
-                                Set<ModbusDriverInstance> drivers = this.driver
-                                        .getRegister2Driver().get(register);
-                                if (drivers != null)
+                                // handle possible number format exceptions
+                                // generated on translation of register values
+                                // possible errors might still occur for not
+                                // numeric values
+                                try
                                 {
-                                    for (ModbusDriverInstance driver : drivers)
-                                    {
-                                        // notify the value
-                                        driver.newMessageFromHouse(register,
-                                                register.getXlator()
-                                                        .getValue(response));
-                                        // set the device as reachable
-                                        driver.setReachable(register, true);
-                                    }
-                                }
+                                    // debug
+                                    String responseAsString = response
+                                            .getHexMessage();
+                                    this.logger.debug(
+                                            "Received -> " + responseAsString);
 
-                                // successful read operation!
-                                read = true;
+                                    this.logger.debug("Translated into -> "
+                                            + register.getXlator()
+                                                    .getValue(response));
+
+                                    // dispatch the new message...
+                                    // TODO: check if this shall be done
+                                    // asynchronously
+                                    Set<ModbusDriverInstance> drivers = this.driver
+                                            .getRegister2Driver().get(register);
+                                    if (drivers != null)
+                                    {
+                                        for (ModbusDriverInstance driver : drivers)
+                                        {
+                                            // notify the value
+                                            driver.newMessageFromHouse(register,
+                                                    register.getXlator()
+                                                            .getValue(
+                                                                    response));
+                                            // set the device as reachable
+                                            driver.setReachable(register, true);
+                                        }
+                                    }
+
+                                    // successful read operation!
+                                    read = true;
+                                }
+                                catch (NumberFormatException nfe)
+                                {
+                                    this.logger.warn(
+                                            "Unable to translate modbus register value. Received value: {}",
+                                            response.getHexMessage());
+                                }
                             }
                             else
                             {
