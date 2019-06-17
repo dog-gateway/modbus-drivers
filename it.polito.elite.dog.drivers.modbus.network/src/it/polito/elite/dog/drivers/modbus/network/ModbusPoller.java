@@ -271,6 +271,7 @@ public class ModbusPoller extends Thread
     private Set<ModbusRegisterInfo> readAll(
             final Set<ModbusRegisterInfo> registers)
     {
+        
         // create the set of unreadable or broken registers
         Set<ModbusRegisterInfo> brokenRegisters = new HashSet<ModbusRegisterInfo>();
 
@@ -400,33 +401,28 @@ public class ModbusPoller extends Thread
                                             response.getHexMessage());
                                 }
                             }
-                            else
-                            {
-                                // close the connection
-                                modbusConnection.close();
-                                // remove the connection from the connection
-                                // pool
-                                this.driver.getConnectionPool()
-                                        .remove(gwIdentifier);
-                            }
-
                         }
                         catch (ModbusIOException e)
                         {
-                            // debug
-                            this.logger.debug(
+                            // error
+                            this.logger.error(
                                     "Error on Modbus I/O communication for register "
-                                            + register + "\nException: " + e);
+                                            + register.getAddress()
+                                            + " on slave "
+                                            + register.getSlaveId()
+                                            + "\nException: " + e);
 
-                            // close the connection
-                            modbusConnection.close();
+                            // ignore the error and do not trigger reconnection.
                         }
                         catch (ModbusSlaveException e)
                         {
                             // debug
                             this.logger.error(
                                     "Error on Modbus Slave, for register "
-                                            + register + "\nException: " + e);
+                                            + register.getAddress()
+                                            + " on slave "
+                                            + register.getSlaveId()
+                                            + "\nException: " + e);
                             // close the connection
                             modbusConnection.close();
 
@@ -436,7 +432,10 @@ public class ModbusPoller extends Thread
                             // debug
                             this.logger.error(
                                     "Error on Modbus while reading register "
-                                            + register + "\nException: " + e);
+                                            + register.getAddress()
+                                            + " on slave "
+                                            + register.getSlaveId()
+                                            + "\nException: " + e);
                             // close the connection
                             modbusConnection.close();
 
@@ -447,7 +446,18 @@ public class ModbusPoller extends Thread
                             // the current register as "broken"
                             if (read == false)
                             {
+                                // add the current register o the set of broken
+                                // registers
                                 brokenRegisters.add(register);
+
+                                // check if all registers on this line are
+                                // broken
+                                if (registers.size() == brokenRegisters.size())
+                                {
+                                    // trigger reconnection by
+                                    // closing the connection
+                                    modbusConnection.close();
+                                }
 
                                 // notify device unreachable
                                 this.notifyUnreachableRegister(register);

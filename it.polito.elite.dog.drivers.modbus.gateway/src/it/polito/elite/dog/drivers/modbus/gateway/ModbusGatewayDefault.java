@@ -20,4 +20,6 @@ public class ModbusGatewayDefault
     public static final String DEFAULT_DATA_BITS = "8";
 
     public static final String DEFAULT_BAUD_RATE = "115200";
+    
+    public static final int DEFAULT_SERIAL_TIMEOUT = 250;
 }

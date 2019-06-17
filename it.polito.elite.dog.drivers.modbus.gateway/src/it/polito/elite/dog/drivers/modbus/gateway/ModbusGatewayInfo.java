@@ -97,6 +97,9 @@ public class ModbusGatewayInfo
         Set<String> echoSet = descriptor.getSimpleConfigurationParams()
                 .get(ModbusInfo.ECHO);
 
+        Set<String> serialTimeoutSet = descriptor.getSimpleConfigurationParams()
+                .get(ModbusInfo.REQUEST_TIMEOUT_MILLIS);
+
         // if not null, it is a singleton
         if (gatewayAddressSet != null)
         {
@@ -167,6 +170,18 @@ public class ModbusGatewayInfo
                 echo = echoSet.iterator().next();
             }
             info.getSerialParameters().setEcho(Boolean.parseBoolean(echo));
+
+            // get the serial timeout if exists
+            String serialTimeout = null;
+            if ((serialTimeoutSet != null) && (!serialTimeoutSet.isEmpty()))
+            {
+                serialTimeout = serialTimeoutSet.iterator().next();
+            }
+            // set the serial timeout
+            info.getSerialParameters()
+                    .setReceiveTimeout((serialTimeout != null
+                            ? Integer.parseInt(serialTimeout)
+                            : ModbusGatewayDefault.DEFAULT_SERIAL_TIMEOUT));
         }
 
         return info;

@@ -794,8 +794,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         }
 
         // info on port usage
-        this.logger.info("Adding register {} on gateway {}.",
-                register.getAddress(), register.getGatewayIdentifier());
+        this.logger.info("Adding register {} on slave {} using gateway {}.",
+                register.getAddress(), register.getSlaveId(),
+                register.getGatewayIdentifier());
 
         // adds a given register-driver association
         Set<ModbusDriverInstance> drivers = this.register2Driver.get(register);
