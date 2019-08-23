@@ -535,25 +535,31 @@ public class BaseRegXlator
         // extract the holding register response
         Number scaledValue = this.fromRegisters(registers);
 
-        // scale the value if needed
-        // no scaling can be applied to BIT values
-        // WARNING!! this implies a precision loss for 64bit INT e UINT values
-        if (this.registerSize != DataSizeEnum.BIT)
+        // check not null
+        if (scaledValue != null)
         {
-            // avoid conversion and precision loss on unit scale factors.
-            if (this.scaleFactor != 1.0)
+            // scale the value if needed
+            // no scaling can be applied to BIT values
+            // WARNING!! this implies a precision loss for 64bit INT e UINT
+            // values
+            if (this.registerSize != DataSizeEnum.BIT)
             {
-                scaledValue = scaledValue.doubleValue() * this.scaleFactor;
-            }
+                // avoid conversion and precision loss on unit scale factors.
+                if (this.scaleFactor != 1.0)
+                {
+                    scaledValue = scaledValue.doubleValue() * this.scaleFactor;
+                }
 
-            value = DecimalMeasure.valueOf(scaledValue
-                    + ((this.unitOfMeasure != null) ? " " + this.unitOfMeasure
-                            : ""));
-        }
-        else
-        {
-            // interpret BIT registers as boolean
-            value = (scaledValue.shortValue() != 0 ? true : false);
+                value = DecimalMeasure
+                        .valueOf(scaledValue + ((this.unitOfMeasure != null)
+                                ? " " + this.unitOfMeasure
+                                : ""));
+            }
+            else
+            {
+                // interpret BIT registers as boolean
+                value = (scaledValue.shortValue() != 0 ? true : false);
+            }
         }
 
         return value;
@@ -572,122 +578,131 @@ public class BaseRegXlator
         // the result of the register extraction, initially null.
         Number result = null;
 
-        // check size
-        if (this.registerSize.getNRegisters() == registers.length)
+        // check not null
+        if (registers != null)
         {
-            // extract the register payload ready to be wrapped by a byte buffer
-            byte[] registerBytes = this.computeBEPayload(registers,
-                    this.getEndiannessMap(this.getEndiannessKey()));
 
-            // wrap the register bytes as a byte buffer
-            ByteBuffer registerBytesValue = ByteBuffer.wrap(registerBytes);
-
-            // convert the register value
-            switch (this.registerSize)
+            // check size
+            if (this.registerSize.getNRegisters() == registers.length)
             {
-                case UINT16:
-                {
-                    result =  ((int)registerBytesValue.getShort()) & 0xffff;
-                    break;
-                }
-                case INT16:
-                {
-                    result = registerBytesValue.getShort();
-                    break;
-                }
+                // extract the register payload ready to be wrapped by a byte
+                // buffer
+                byte[] registerBytes = this.computeBEPayload(registers,
+                        this.getEndiannessMap(this.getEndiannessKey()));
 
-                case UINT32:
+                // wrap the register bytes as a byte buffer
+                ByteBuffer registerBytesValue = ByteBuffer.wrap(registerBytes);
+
+                // convert the register value
+                switch (this.registerSize)
                 {
-                    result = ((long) registerBytesValue.getInt()) & 0xffffffffL;
-                    break;
-                }
-
-                case INT32:
-                {
-                    result = registerBytesValue.getInt();
-                    break;
-                }
-
-                case UINT48:
-                {
-                    byte[] registerBytesWithFilling = new byte[8];
-
-                    // propagate the sign
-                    registerBytesWithFilling[0] = 0x00;
-                    registerBytesWithFilling[1] = 0x00;
-
-                    // copy the register bytes
-                    for (int i = 0; i < registerBytes.length; i++)
+                    case UINT16:
                     {
-                        registerBytesWithFilling[i + 2] = registerBytes[i];
+                        result = ((int) registerBytesValue.getShort()) & 0xffff;
+                        break;
+                    }
+                    case INT16:
+                    {
+                        result = registerBytesValue.getShort();
+                        break;
                     }
 
-                    // wrap the filled bytes
-                    registerBytesValue = ByteBuffer
-                            .wrap(registerBytesWithFilling);
-
-                    // get the value
-                    result = registerBytesValue.getLong();
-                    break;
-                }
-                case INT48:
-                {
-                    byte[] registerBytesWithFilling = new byte[8];
-
-                    // propagate the sign
-                    byte fillValue = (byte) ((registerBytes[0] >= 0) ? 0x00
-                            : 0xff);
-                    registerBytesWithFilling[0] = fillValue;
-                    registerBytesWithFilling[1] = fillValue;
-
-                    // copy the register bytes
-                    for (int i = 0; i < registerBytes.length; i++)
+                    case UINT32:
                     {
-                        registerBytesWithFilling[i + 1] = registerBytes[i];
+                        result = ((long) registerBytesValue.getInt())
+                                & 0xffffffffL;
+                        break;
                     }
 
-                    // wrap the filled bytes
-                    registerBytesValue = ByteBuffer
-                            .wrap(registerBytesWithFilling);
-
-                    // get the value
-                    result = registerBytesValue.getLong();
-                    break;
-                }
-                case UINT64:
-                case INT64:
-                {
-                    // WARNING: make sure that for UINT64 the number is treated
-                    // correctly as unsigned.
-                    result = registerBytesValue.getLong();
-                    break;
-                }
-                case FLOAT32:
-                {
-                    result = registerBytesValue.getFloat();
-                    break;
-                }
-                case FLOAT64:
-                {
-                    result = registerBytesValue.getDouble();
-                    break;
-                }
-                case BIT:
-                {
-                    // BIT is interpreted as the index of the bit starting from
-                    // the least significant bit
-                    // order LSB -> MSB
-                    // get the right byte
-                    int byteIndex = ((registerBytes.length * 8 - 1) - this.bit)
-                            / 8;
-
-                    // protection against out-of-bound exceptions...
-                    if (byteIndex >= 0 && byteIndex < registerBytes.length)
+                    case INT32:
                     {
-                        byte byteToMask = registerBytes[byteIndex];
+                        result = registerBytesValue.getInt();
+                        break;
+                    }
 
-                        // extract the bit of interest
-                        result = (0x01 << (this.bit % 8)) & byteToMask;
+                    case UINT48:
+                    {
+                        byte[] registerBytesWithFilling = new byte[8];
+
+                        // propagate the sign
+                        registerBytesWithFilling[0] = 0x00;
+                        registerBytesWithFilling[1] = 0x00;
+
+                        // copy the register bytes
+                        for (int i = 0; i < registerBytes.length; i++)
+                        {
+                            registerBytesWithFilling[i + 2] = registerBytes[i];
+                        }
+
+                        // wrap the filled bytes
+                        registerBytesValue = ByteBuffer
+                                .wrap(registerBytesWithFilling);
+
+                        // get the value
+                        result = registerBytesValue.getLong();
+                        break;
+                    }
+                    case INT48:
+                    {
+                        byte[] registerBytesWithFilling = new byte[8];
+
+                        // propagate the sign
+                        byte fillValue = (byte) ((registerBytes[0] >= 0) ? 0x00
+                                : 0xff);
+                        registerBytesWithFilling[0] = fillValue;
+                        registerBytesWithFilling[1] = fillValue;
+
+                        // copy the register bytes
+                        for (int i = 0; i < registerBytes.length; i++)
+                        {
+                            registerBytesWithFilling[i + 1] = registerBytes[i];
+                        }
+
+                        // wrap the filled bytes
+                        registerBytesValue = ByteBuffer
+                                .wrap(registerBytesWithFilling);
+
+                        // get the value
+                        result = registerBytesValue.getLong();
+                        break;
+                    }
+                    case UINT64:
+                    case INT64:
+                    {
+                        // WARNING: make sure that for UINT64 the number is
+                        // treated
+                        // correctly as unsigned.
+                        result = registerBytesValue.getLong();
+                        break;
+                    }
+                    case FLOAT32:
+                    {
+                        result = registerBytesValue.getFloat();
+                        break;
+                    }
+                    case FLOAT64:
+                    {
+                        result = registerBytesValue.getDouble();
+                        break;
+                    }
+                    case BIT:
+                    {
+                        // BIT is interpreted as the index of the bit starting
+                        // from
+                        // the least significant bit
+                        // order LSB -> MSB
+                        // get the right byte
+                        int byteIndex = ((registerBytes.length * 8 - 1)
+                                - this.bit) / 8;
+
+                        // protection against out-of-bound exceptions...
+                        if (byteIndex >= 0 && byteIndex < registerBytes.length)
+                        {
+                            byte byteToMask = registerBytes[byteIndex];
+
+                            // extract the bit of interest
+                            result = (0x01 << (this.bit % 8)) & byteToMask;
+                        }
                     }
                 }
             }
