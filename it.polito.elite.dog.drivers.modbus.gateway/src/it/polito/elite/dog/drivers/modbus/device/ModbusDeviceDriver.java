@@ -265,10 +265,15 @@ public abstract class ModbusDeviceDriver implements Driver
         // available.
         SerialParameters serialParameters = gatewayInstance
                 .getSerialParameters();
+        // the gateway-level request timeout
+        long requestTimeout = gatewayInstance.getGatewayRequestTimeout();
+        // the gateway-level request gap
+        long requestGap = gatewayInstance.getGatewayRequestGap();
 
         ModbusDriverInstance driverInstance = this.createModbusDriverInstance(
                 this.network.get(), gwAddress, gwPort, gwProtocol,
-                serialParameters, this.context, reference);
+                serialParameters, requestTimeout, requestGap, this.context,
+                reference);
 
         // store a reference to the connected driver
         synchronized (this.managedInstances)
@@ -284,7 +289,8 @@ public abstract class ModbusDeviceDriver implements Driver
     public abstract ModbusDriverInstance createModbusDriverInstance(
             ModbusNetwork modbusNetwork, String gwAddress, String gwPort,
             String gwProtocol, SerialParameters serialParameters,
-            BundleContext context, ServiceReference<Device> device);
+            long requestTimeout, long requestGap, BundleContext context,
+            ServiceReference<Device> device);
 
     /**
      * Fill a set with all the device categories whose devices can match with

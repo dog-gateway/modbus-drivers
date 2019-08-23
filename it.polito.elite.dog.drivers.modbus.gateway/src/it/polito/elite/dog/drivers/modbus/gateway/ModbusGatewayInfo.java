@@ -39,6 +39,8 @@ public class ModbusGatewayInfo
     private String protocol;
     private String protocolVariant;
     private SerialParameters serialParameters;
+    private long requestTimeoutMillis;
+    private long requestGapMillis;
 
     /**
      * Empty constructor, initializes required data structures.
@@ -49,6 +51,9 @@ public class ModbusGatewayInfo
         this.serialParameters = new SerialParameters();
         // FIXME: use a well defined constant
         this.protocol = "modbus";
+        // set default for request timeout
+        this.requestTimeoutMillis = ModbusInfo.DEFAULT_REQUEST_TIMEOUT_MILLIS;
+        this.requestGapMillis = ModbusInfo.DEFAULT_REQUEST_GAP_MILLIS;
     }
 
     /**
@@ -100,6 +105,9 @@ public class ModbusGatewayInfo
         Set<String> serialTimeoutSet = descriptor.getSimpleConfigurationParams()
                 .get(ModbusInfo.REQUEST_TIMEOUT_MILLIS);
 
+        Set<String> requestGapSet = descriptor.getSimpleConfigurationParams()
+                .get(ModbusInfo.REQUEST_GAP_MILLIS);
+
         // if not null, it is a singleton
         if (gatewayAddressSet != null)
         {
@@ -115,6 +123,41 @@ public class ModbusGatewayInfo
         // get the gateway protocol if exists
         if ((gatewayProtocolSet != null) && (!gatewayProtocolSet.isEmpty()))
             info.setProtocolVariant(gatewayProtocolSet.iterator().next());
+
+        // get the request gap if exists
+        String requestGap = null;
+        if ((requestGapSet != null) && (!requestGapSet.isEmpty()))
+        {
+            requestGap = requestGapSet.iterator().next();
+            // parse the timeout
+            try
+            {
+                long gap = Long.valueOf(requestGap.trim());
+                info.setRequestGapMillis(gap);
+            }
+            catch (NumberFormatException nfe)
+            {
+                // do nothing, leave the default
+            }
+        }
+
+        // get the serial timeout if exists
+        String serialTimeout = null;
+        if ((serialTimeoutSet != null) && (!serialTimeoutSet.isEmpty()))
+        {
+            serialTimeout = serialTimeoutSet.iterator().next();
+
+            // parse the timeout
+            try
+            {
+                long timeout = Long.valueOf(serialTimeout.trim());
+                info.setRequestTimeoutMillis(timeout);
+            }
+            catch (NumberFormatException nfe)
+            {
+                // do nothing, use the default.
+            }
+        }
 
         // Only if the port name is indicated (for serial port connections)
         // the other serial parameters are verified
@@ -171,17 +214,10 @@ public class ModbusGatewayInfo
             }
             info.getSerialParameters().setEcho(Boolean.parseBoolean(echo));
 
-            // get the serial timeout if exists
-            String serialTimeout = null;
-            if ((serialTimeoutSet != null) && (!serialTimeoutSet.isEmpty()))
-            {
-                serialTimeout = serialTimeoutSet.iterator().next();
-            }
             // set the serial timeout
             info.getSerialParameters()
-                    .setReceiveTimeout((serialTimeout != null
-                            ? Integer.parseInt(serialTimeout)
-                            : ModbusGatewayDefault.DEFAULT_SERIAL_TIMEOUT));
+                    .setReceiveTimeout((int) info.getRequestTimeoutMillis());
+
         }
 
         return info;
@@ -304,6 +340,48 @@ public class ModbusGatewayInfo
     public void setSerialParameters(SerialParameters serialParameters)
     {
         this.serialParameters = serialParameters;
+    }
+
+    /**
+     * Gets the gap between subsequent requests, defined at the gateway level.
+     * 
+     * @return the requestGapMillis
+     */
+    public long getRequestGapMillis()
+    {
+        return requestGapMillis;
+    }
+
+    /**
+     * Sets the gap between subsequent requests, defined at the gateway level.
+     * 
+     * @param requestGapMillis
+     *            the requestGapMillis to set
+     */
+    public void setRequestGapMillis(long requestGapMillis)
+    {
+        this.requestGapMillis = requestGapMillis;
+    }
+
+    /**
+     * Get the request timeout defined at the gateway level.
+     * 
+     * @return the requestTimeoutMillis
+     */
+    public long getRequestTimeoutMillis()
+    {
+        return requestTimeoutMillis;
+    }
+
+    /**
+     * Sets the request timeout defined at the gateway level.
+     * 
+     * @param requestTimeoutMillis
+     *            the requestTimeoutMillis to set
+     */
+    public void setRequestTimeoutMillis(long requestTimeoutMillis)
+    {
+        this.requestTimeoutMillis = requestTimeoutMillis;
     }
 
 }

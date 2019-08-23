@@ -55,11 +55,13 @@ public class ModbusCo2SensorDriver extends ModbusDeviceDriver
     public ModbusDriverInstance createModbusDriverInstance(
             ModbusNetwork modbusNetwork, String gatewayAddress,
             String gatewayPort, String gwProtocol,
-            SerialParameters serialParameters, BundleContext context,
+            SerialParameters serialParameters, long requestTimeout,
+            long requestGap, BundleContext context,
             ServiceReference<Device> device)
     {
         return new ModbusCo2SensorDriverInstance(modbusNetwork, gatewayAddress,
-                gatewayPort, gwProtocol, serialParameters, context, device);
+                gatewayPort, gwProtocol, serialParameters, requestTimeout,
+                requestGap, context, device);
     }
 
 }

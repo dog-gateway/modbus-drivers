@@ -40,6 +40,9 @@ import org.osgi.service.device.Device;
 import org.osgi.service.log.Logger;
 import org.osgi.service.log.LoggerFactory;
 import org.osgi.util.tracker.ServiceTracker;
+
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.HashSet;
@@ -80,6 +83,11 @@ public abstract class ModbusDriverInstance extends
     // variants)
     protected SerialParameters serialParameters;
 
+    // the gateway-level requestTimeout
+    protected long gatewayRequestTimeout;
+    // the gateway-level requestGap
+    protected long gatewayRequestGap;
+
     // the datapoints managed by this driver
     protected Set<ModbusRegisterInfo> managedRegisters;
 
@@ -105,6 +113,7 @@ public abstract class ModbusDriverInstance extends
      */
     public ModbusDriverInstance(ModbusNetwork network, String gwAddress,
             String gwPort, String gwProtocol, SerialParameters serialParams,
+            long gatewayRequestTimeout, long gatewayRequestGap,
             BundleContext ctx, ServiceReference<Device> deviceReference)
     {
         super(ctx, deviceReference, null);
@@ -124,14 +133,17 @@ public abstract class ModbusDriverInstance extends
         this.gwProtocol = (gwProtocol != null) ? gwProtocol
                 : ModbusProtocolVariant.TCP.toString();
         this.serialParameters = serialParams;
+        // store the gateway-level request timeout and gap.
+        this.gatewayRequestTimeout = gatewayRequestTimeout;
+        this.gatewayRequestGap = gatewayRequestGap;
 
-        // create the map needed to associate datapoints to notifications
+        // create the map needed to associate data points to notifications
         this.register2Notification = new ConcurrentHashMap<ModbusRegisterInfo, Set<CNParameters>>();
 
-        // create the map to associate commands and datapoints
+        // create the map to associate commands and data points
         this.command2Register = new ConcurrentHashMap<CNParameters, ModbusRegisterInfo>();
 
-        // create the set for storing the managed datapoints
+        // create the set for storing the managed data points
         this.managedRegisters = new HashSet<ModbusRegisterInfo>();
 
         // open the tracker
@@ -314,6 +326,26 @@ public abstract class ModbusDriverInstance extends
         return serialParameters;
     }
 
+    /**
+     * Returns the request timeout defined at the gateway level
+     * 
+     * @return
+     */
+    public long getGatewayRequestTimeout()
+    {
+        return this.gatewayRequestTimeout;
+    }
+
+    /**
+     * Returns the request gap defined at the gateway level
+     * 
+     * @return
+     */
+    public long getGatewayRequestGap()
+    {
+        return this.gatewayRequestGap;
+    }
+
     // -------- PRIVATE METHODS ----------
 
     /***
@@ -325,9 +357,7 @@ public abstract class ModbusDriverInstance extends
     {
         // Gets the properties shared by almost all Modbus devices, i.e. the
         // register address, the slave id, the register type and the unit of
-        // measure. It must be noticed that such informations are specified for
-        // each command/notification while no common parameters are
-        // defined/handled
+        // measure.
 
         // get parameters associated to each device command (if any)
         Set<ElementDescription> commandsSpecificParameters = this.device
@@ -458,20 +488,31 @@ public abstract class ModbusDriverInstance extends
         // no address no party
         if (regAddress != null && !regAddress.isEmpty())
         {
-            int registerAddress = Integer.valueOf(regAddress);
+            // if the given address is not a number than the address will be set
+            // at Integer.MIN_VALUE (a negative number which cannot be a
+            // register address)
+            int registerAddress = (int) this.getNumberOrDefault(regAddress,
+                    Integer.class, ModbusInfo.DEFAULT_REGISTER_ADDRESS);
             // get the Modbus register unit of measure
             String unitOfMeasure = params.get(ModbusInfo.REGISTER_UOM);
             // get the Modbus register type as a string
             String registerType = params.get(ModbusInfo.REGISTER_TYPE);
             // get the Modbus register slave id
-            int registerSlaveId = Integer
-                    .valueOf(params.get(ModbusInfo.SLAVE_ID).trim());
+            // if the given slave id is not a number than the slave id will be
+            // set
+            // at Integer.MIN_VALUE (a negative number that cannot be a slave
+            // id)
+            int registerSlaveId = (int) this.getNumberOrDefault(
+                    params.get(ModbusInfo.SLAVE_ID), Integer.class,
+                    ModbusInfo.DEFAULT_SLAVE_ID);
+
             // get the Modbus register scale factor if needed
-            double scaleFactor = Double
-                    .valueOf(params.get(ModbusInfo.SCALE_FACTOR).trim());
+            double scaleFactor = (double) this.getNumberOrDefault(
+                    params.get(ModbusInfo.SCALE_FACTOR), Double.class,
+                    ModbusInfo.DEFAULT_SCALE_FACTOR);
 
             // try parsing the register type as enum, if the result is null
-            // than the register type is likley to be specified using the
+            // than the register type is likely to be specified using the
             // former numeric-based specification.
             RegisterTypeEnum regTypeNew = RegisterTypeEnum
                     .fromValue(registerType);
@@ -507,11 +548,13 @@ public abstract class ModbusDriverInstance extends
             {
 
                 // get the request timeout
-                long requestTimeout = Long.valueOf(
-                        params.get(ModbusInfo.REQUEST_TIMEOUT_MILLIS).trim());
-                // get the minimum request gap
-                long requestGap = Long.valueOf(
-                        params.get(ModbusInfo.REQUEST_GAP_MILLIS).trim());
+                long requestTimeout = (long) this.getNumberOrDefault(
+                        ModbusInfo.REQUEST_TIMEOUT_MILLIS, Long.class,
+                        this.gatewayRequestTimeout);
+
+                long requestGap = (long) this.getNumberOrDefault(
+                        ModbusInfo.REQUEST_GAP_MILLIS, Long.class,
+                        this.gatewayRequestGap);
 
                 // fill the request timeout
                 registerInfo.setRequestTimeoutMillis(requestTimeout);
@@ -520,19 +563,24 @@ public abstract class ModbusDriverInstance extends
                 registerInfo.setRequestGapMillis(requestGap);
 
                 // the register data size
-                DataSizeEnum dataSize = DataSizeEnum
-                        .fromValue(params.get(ModbusInfo.DATA_SIZE).trim());
+                DataSizeEnum dataSize = this.getDataSizeEnumOrDefault(
+                        params.get(ModbusInfo.DATA_SIZE), DataSizeEnum.INT16);
                 // the register byte order
-                OrderEnum byteOrder = OrderEnum
-                        .fromValue(params.get(ModbusInfo.BYTE_ORDER).trim());
+                OrderEnum byteOrder = this.getOrderEnumOrDefault(
+                        params.get(ModbusInfo.BYTE_ORDER),
+                        OrderEnum.BIG_ENDIAN);
                 // the word order
-                OrderEnum wordOrder = OrderEnum
-                        .fromValue(params.get(ModbusInfo.WORD_ORDER).trim());
+                OrderEnum wordOrder = this.getOrderEnumOrDefault(
+                        params.get(ModbusInfo.WORD_ORDER),
+                        OrderEnum.BIG_ENDIAN);
                 // the double word order
-                OrderEnum doubleWordOrder = OrderEnum.fromValue(
-                        params.get(ModbusInfo.DOUBLE_WORD_ORDER).trim());
+                OrderEnum doubleWordOrder = this.getOrderEnumOrDefault(
+                        params.get(ModbusInfo.DOUBLE_WORD_ORDER),
+                        OrderEnum.BIG_ENDIAN);
                 // the bit value
-                int bit = Integer.valueOf(params.get(ModbusInfo.BIT).trim());
+                int bit = (int) this.getNumberOrDefault(
+                        params.get(ModbusInfo.BIT), Integer.class,
+                        ModbusInfo.DEFAULT_BIT);
 
                 // build a BaseXlator
                 BaseRegXlator baseXlator = new BaseRegXlator(dataSize,
@@ -558,9 +606,10 @@ public abstract class ModbusDriverInstance extends
             registerInfo.getXlator().setScaleFactor(scaleFactor);
             // set the unit of measure
             registerInfo.getXlator().setUnitOfMeasure(unitOfMeasure);
-
         }
-        return registerInfo;
+
+        return (registerInfo != null && registerInfo.isValid()) ? registerInfo
+                : null;
     }
 
     /**
@@ -580,5 +629,64 @@ public abstract class ModbusDriverInstance extends
                 aDevice.setOnline(online);
             }
         }
+    }
+
+    private Number getNumberOrDefault(String value,
+            Class<? extends Number> numberClass, Number defaultValue)
+    {
+        Number actualValue = defaultValue;
+        if (value != null && !value.isEmpty())
+        {
+            try
+            {
+                Method valueOf = numberClass.getMethod("valueOf", String.class);
+                actualValue = (Number) valueOf.invoke(null, value.trim());
+            }
+            catch (NoSuchMethodException | SecurityException
+                    | IllegalAccessException | IllegalArgumentException
+                    | InvocationTargetException ex)
+            {
+
+                // do nothing
+            }
+        }
+
+        return actualValue;
+    }
+
+    private OrderEnum getOrderEnumOrDefault(String value,
+            OrderEnum defaultValue)
+    {
+        OrderEnum actualValue = defaultValue;
+
+        if (value != null && !value.isEmpty())
+        {
+            OrderEnum candidateValue = OrderEnum.fromValue(value.trim());
+
+            if (candidateValue != null)
+            {
+                actualValue = candidateValue;
+            }
+        }
+
+        return actualValue;
+    }
+
+    private DataSizeEnum getDataSizeEnumOrDefault(String value,
+            DataSizeEnum defaultValue)
+    {
+        DataSizeEnum actualValue = defaultValue;
+
+        if (value != null && !value.isEmpty())
+        {
+            DataSizeEnum candidateValue = DataSizeEnum.fromValue(value.trim());
+
+            if (candidateValue != null)
+            {
+                actualValue = candidateValue;
+            }
+        }
+
+        return actualValue;
     }
 }

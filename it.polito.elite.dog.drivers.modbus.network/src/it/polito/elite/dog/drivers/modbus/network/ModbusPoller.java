@@ -17,6 +17,7 @@
  */
 package it.polito.elite.dog.drivers.modbus.network;
 
+import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import net.wimpi.modbus.Modbus;
@@ -502,7 +503,7 @@ public class ModbusPoller extends Thread
                             // minimum time between subsequent register read
                             Thread.sleep((register.getRequestGapMillis() > 0)
                                     ? register.getRequestGapMillis()
-                                    : ModbusDriverImpl.DEFAULT_REQUEST_GAP_MILLIS);
+                                    : ModbusInfo.DEFAULT_REQUEST_GAP_MILLIS);
                         }
                         catch (InterruptedException e)
                         {

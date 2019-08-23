@@ -61,11 +61,11 @@ public class ModbusPressureSensorDriverInstance extends ModbusDriverInstance
      */
     public ModbusPressureSensorDriverInstance(ModbusNetwork network,
             String gatewayAddress, String gatewayPort, String gatewayProtocol,
-            SerialParameters serialParams, BundleContext context,
-            ServiceReference<Device> device)
+            SerialParameters serialParams, long requestTimeout, long requestGap,
+            BundleContext context, ServiceReference<Device> device)
     {
         super(network, gatewayAddress, gatewayPort, gatewayProtocol,
-                serialParams, context, device);
+                serialParams, requestTimeout, requestGap, context, device);
 
         // create a logger
         this.logger = context

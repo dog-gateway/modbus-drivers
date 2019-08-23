@@ -48,10 +48,12 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
     public ModbusGatewayDriverInstance(ModbusNetwork network,
             ServiceReference<Device> controllableDevice, String gatewayAddress,
             String gatewayPort, String protocolVariant,
-            SerialParameters serialParameters, BundleContext context)
+            SerialParameters serialParameters, long requestTimeoutMillis,
+            long requestGapMillis, BundleContext context)
     {
         super(network, gatewayAddress, gatewayPort, protocolVariant,
-                serialParameters, context, controllableDevice);
+                serialParameters, requestTimeoutMillis, requestGapMillis,
+                context, controllableDevice);
 
         // create a logger
         this.logger = context
@@ -77,8 +79,10 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
         // house messages...
 
         // just log
-        this.logger.info("Received new message from house involving the register:\n "
-                + registerInfo + "\n No operation is currently supported");
+        this.logger.info(
+                "Received new message from house involving the register:\n "
+                        + registerInfo
+                        + "\n No operation is currently supported");
 
     }
 

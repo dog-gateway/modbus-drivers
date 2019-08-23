@@ -37,31 +37,33 @@ import net.wimpi.modbus.util.SerialParameters;
 public class ModbusLightSensorDriver extends ModbusDeviceDriver
 {
 
-	/**
-	 * The class constructor, creates an instance of the
-	 * {@link ModbusLightSensorDriver} given the OSGi context to which the
-	 * bundle must be linked.
-	 * 
-	 * @param context
-	 * 
-	 */
-	public ModbusLightSensorDriver()
-	{
-		// call the superclass constructor
-		super();
+    /**
+     * The class constructor, creates an instance of the
+     * {@link ModbusLightSensorDriver} given the OSGi context to which the
+     * bundle must be linked.
+     * 
+     * @param context
+     * 
+     */
+    public ModbusLightSensorDriver()
+    {
+        // call the superclass constructor
+        super();
 
-		// set the driver instance class
-		this.driverInstanceClass = ModbusLightSensorDriverInstance.class;
-	}
+        // set the driver instance class
+        this.driverInstanceClass = ModbusLightSensorDriverInstance.class;
+    }
 
-	@Override
-	public ModbusDriverInstance createModbusDriverInstance(
-			ModbusNetwork modbusNetwork, 
-			String gatewayAddress, String gatewayPort, String gwProtocol,
-			SerialParameters serialParams, BundleContext context, ServiceReference<Device> device)
-	{
-		return new ModbusLightSensorDriverInstance(modbusNetwork, 
-				gatewayAddress, gatewayPort, gwProtocol, serialParams, context, device);
-	}
+    @Override
+    public ModbusDriverInstance createModbusDriverInstance(
+            ModbusNetwork modbusNetwork, String gatewayAddress,
+            String gatewayPort, String gwProtocol,
+            SerialParameters serialParams, long requestTimeout, long requestGap,
+            BundleContext context, ServiceReference<Device> device)
+    {
+        return new ModbusLightSensorDriverInstance(modbusNetwork,
+                gatewayAddress, gatewayPort, gwProtocol, serialParams,
+                requestTimeout, requestGap, context, device);
+    }
 
 }
