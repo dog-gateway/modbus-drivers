@@ -17,7 +17,6 @@
  */
 package it.polito.elite.dog.drivers.modbus.network.info;
 
-import it.polito.elite.dog.drivers.modbus.network.ModbusDriverImpl;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlatorTypes;
@@ -65,7 +64,8 @@ public class ModbusRegisterInfo implements Comparable<ModbusRegisterInfo>
     public ModbusRegisterInfo()
     {
         // set default
-        this.requestGapMillis = ModbusDriverImpl.DEFAULT_REQUEST_GAP_MILLIS;
+        this.requestGapMillis = ModbusInfo.DEFAULT_REQUEST_GAP_MILLIS;
+        this.requestTimeoutMillis = ModbusInfo.DEFAULT_REQUEST_TIMEOUT_MILLIS;
     }
 
     /**
@@ -459,5 +459,20 @@ public class ModbusRegisterInfo implements Comparable<ModbusRegisterInfo>
         clone.xlator = this.xlator.clone();
         clone.serialParameters = this.serialParameters;
         return clone;
+    }
+
+    /**
+     * Checks if the current instance of register info is valid and can be used
+     * or not.
+     * 
+     * @return
+     */
+    public boolean isValid()
+    {
+        return this.address >= 0 && this.slaveId >= 0 && this.xlator != null
+                && this.gatewayProtocol != null
+                && (this.serialParameters != null
+                        || (this.gatewayIPAddress != null
+                                && this.gatewayPort != null));
     }
 }

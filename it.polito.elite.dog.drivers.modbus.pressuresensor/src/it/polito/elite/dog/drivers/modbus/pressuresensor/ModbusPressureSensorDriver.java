@@ -52,12 +52,12 @@ public class ModbusPressureSensorDriver extends ModbusDeviceDriver
     public ModbusDriverInstance createModbusDriverInstance(
             ModbusNetwork modbusNetwork, String gatewayAddress,
             String gatewayPort, String gwProtocol,
-            SerialParameters serialParams, BundleContext context,
-            ServiceReference<Device> device)
+            SerialParameters serialParams, long requestTimeout, long requestGap,
+            BundleContext context, ServiceReference<Device> device)
     {
         return new ModbusPressureSensorDriverInstance(modbusNetwork,
-                gatewayAddress, gatewayPort, gwProtocol, serialParams, context,
-                device);
+                gatewayAddress, gatewayPort, gwProtocol, serialParams,
+                requestTimeout, requestGap, context, device);
     }
 
 }

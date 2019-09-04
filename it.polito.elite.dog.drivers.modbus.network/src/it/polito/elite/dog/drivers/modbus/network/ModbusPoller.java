@@ -17,6 +17,7 @@
  */
 package it.polito.elite.dog.drivers.modbus.network;
 
+import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import net.wimpi.modbus.Modbus;
@@ -271,6 +272,7 @@ public class ModbusPoller extends Thread
     private Set<ModbusRegisterInfo> readAll(
             final Set<ModbusRegisterInfo> registers)
     {
+
         // create the set of unreadable or broken registers
         Set<ModbusRegisterInfo> brokenRegisters = new HashSet<ModbusRegisterInfo>();
 
@@ -325,6 +327,9 @@ public class ModbusPoller extends Thread
                             .iterator();
                     while (regIterator.hasNext())
                     {
+                        // set the read flag at false
+                        read = false;
+                        // get the current register
                         ModbusRegisterInfo register = regIterator.next();
 
                         // prepare the read request using the register
@@ -355,66 +360,88 @@ public class ModbusPoller extends Thread
                             if (response != null)
                             {
 
-                                // debug
-                                String responseAsString = response
-                                        .getHexMessage();
-                                this.logger.debug(
-                                        "Received -> " + responseAsString);
-
-                                this.logger.debug("Translated into -> "
-                                        + register.getXlator()
-                                                .getValue(response));
-
-                                // dispatch the new message...
-                                // TODO: check if this shall be done
-                                // asynchronously
-                                Set<ModbusDriverInstance> drivers = this.driver
-                                        .getRegister2Driver().get(register);
-                                if (drivers != null)
+                                // handle possible number format exceptions
+                                // generated on translation of register values
+                                // possible errors might still occur for not
+                                // numeric values
+                                try
                                 {
-                                    for (ModbusDriverInstance driver : drivers)
+                                    // debug
+                                    String responseAsString = response
+                                            .getHexMessage();
+                                    this.logger.debug(
+                                            "Received -> " + responseAsString);
+
+                                    // get the response value
+                                    Object value = register.getXlator()
+                                            .getValue(response);
+
+                                    this.logger.debug(
+                                            "Translated into -> " + value);
+
+                                    // check not null
+                                    if (value != null)
                                     {
-                                        // notify the value
-                                        driver.newMessageFromHouse(register,
-                                                register.getXlator()
-                                                        .getValue(response));
-                                        // set the device as reachable
-                                        driver.setReachable(register, true);
+
+                                        // dispatch the new message...
+                                        // TODO: check if this shall be done
+                                        // asynchronously
+                                        Set<ModbusDriverInstance> drivers = this.driver
+                                                .getRegister2Driver()
+                                                .get(register);
+                                        if (drivers != null)
+                                        {
+                                            for (ModbusDriverInstance driver : drivers)
+                                            {
+                                                // notify the value
+                                                driver.newMessageFromHouse(
+                                                        register, value);
+                                                // set the device as reachable
+                                                driver.setReachable(register,
+                                                        true);
+                                            }
+                                        }
+
+                                        // successful read operation!
+                                        read = true;
                                     }
                                 }
-
-                                // successful read operation!
-                                read = true;
+                                catch (NumberFormatException nfe)
+                                {
+                                    this.logger.warn(
+                                            "Unable to translate modbus register value. Received value: {}",
+                                            response.getHexMessage());
+                                }
                             }
-                            else
-                            {
-                                // close the connection
-                                modbusConnection.close();
-                                // remove the connection from the connection
-                                // pool
-                                this.driver.getConnectionPool()
-                                        .remove(gwIdentifier);
-                            }
-
                         }
                         catch (ModbusIOException e)
                         {
-                            // debug
-                            this.logger.debug(
+                            // error
+                            this.logger.warn(
                                     "Error on Modbus I/O communication for register "
-                                            + register + "\nException: " + e);
+                                            + register.getAddress()
+                                            + " on slave "
+                                            + register.getSlaveId()
+                                            + " gateway "
+                                            + register.getGatewayIdentifier()
+                                            + "\nException: " + e);
 
-                            // close the connection
-                            modbusConnection.close();
+                            // ignore the error and do not trigger reconnection.
                         }
                         catch (ModbusSlaveException e)
                         {
                             // debug
-                            this.logger.error(
-                                    "Error on Modbus Slave, for register "
-                                            + register + "\nException: " + e);
+                            this.logger
+                                    .warn("Error on Modbus Slave, for register "
+                                            + register.getAddress()
+                                            + " on slave "
+                                            + register.getSlaveId()
+                                            + " gateway "
+                                            + register.getGatewayIdentifier()
+                                            + "\nException: " + e);
+                            // ignore the error and do not trigger reconnection.
                             // close the connection
-                            modbusConnection.close();
+                            // modbusConnection.close();
 
                         }
                         catch (ModbusException e)
@@ -422,7 +449,12 @@ public class ModbusPoller extends Thread
                             // debug
                             this.logger.error(
                                     "Error on Modbus while reading register "
-                                            + register + "\nException: " + e);
+                                            + register.getAddress()
+                                            + " on slave "
+                                            + register.getSlaveId()
+                                            + " gateway "
+                                            + register.getGatewayIdentifier()
+                                            + "\nException: " + e);
                             // close the connection
                             modbusConnection.close();
 
@@ -433,7 +465,18 @@ public class ModbusPoller extends Thread
                             // the current register as "broken"
                             if (read == false)
                             {
+                                // add the current register o the set of broken
+                                // registers
                                 brokenRegisters.add(register);
+
+                                // check if all registers on this line are
+                                // broken
+                                if (registers.size() == brokenRegisters.size())
+                                {
+                                    // trigger reconnection by
+                                    // closing the connection
+                                    modbusConnection.close();
+                                }
 
                                 // notify device unreachable
                                 this.notifyUnreachableRegister(register);
@@ -460,7 +503,7 @@ public class ModbusPoller extends Thread
                             // minimum time between subsequent register read
                             Thread.sleep((register.getRequestGapMillis() > 0)
                                     ? register.getRequestGapMillis()
-                                    : ModbusDriverImpl.DEFAULT_REQUEST_GAP_MILLIS);
+                                    : ModbusInfo.DEFAULT_REQUEST_GAP_MILLIS);
                         }
                         catch (InterruptedException e)
                         {

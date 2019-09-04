@@ -77,4 +77,19 @@ public class ModbusInfo extends ConfigurationConstants
     // the minimum gap between two subsequent requests to the same register
     public static final String REQUEST_GAP_MILLIS = "requestGap";
 
+    // DEFAULT VALUES
+
+    // Default request timeout in milliseconds
+    public static final long DEFAULT_REQUEST_TIMEOUT_MILLIS = 100;
+    // Default gap between requests in milliseconds
+    public static final long DEFAULT_REQUEST_GAP_MILLIS = 10;
+    // Default slave id to use in case the slave id is not specified
+    public static final int DEFAULT_SLAVE_ID = Integer.MIN_VALUE;
+    // Default scale factor to use if no scale factor is specified
+    public static final double DEFAULT_SCALE_FACTOR = 1.0;
+    // Default missing mandatory parameter
+    public static final int DEFAULT_REGISTER_ADDRESS = Integer.MIN_VALUE;
+    // Default value for missing bit information
+    public static final int DEFAULT_BIT = 0;
+
 }

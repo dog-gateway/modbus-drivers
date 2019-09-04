@@ -83,8 +83,6 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     public static final int DEFAULT_RECONNECTION_INTERVAL_MILLIS = 3000;
     // the default blacklist duration (in polling cycles)
     public static final int DEFAULT_BLACKLIST_DURATION = 80;
-    // the default request gat
-    public static final int DEFAULT_REQUEST_GAP_MILLIS = 5;
 
     // the bundle context
     private BundleContext bundleContext;
@@ -794,8 +792,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         }
 
         // info on port usage
-        this.logger.info("Adding register {} on gateway {}.",
-                register.getAddress(), register.getGatewayIdentifier());
+        this.logger.info("Adding register {} on slave {} using gateway {}.",
+                register.getAddress(), register.getSlaveId(),
+                register.getGatewayIdentifier());
 
         // adds a given register-driver association
         Set<ModbusDriverInstance> drivers = this.register2Driver.get(register);
