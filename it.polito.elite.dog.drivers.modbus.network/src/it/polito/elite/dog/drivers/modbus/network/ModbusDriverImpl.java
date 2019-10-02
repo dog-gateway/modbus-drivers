@@ -1119,11 +1119,6 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                             }
 
                         };
-                        // schedule
-                        Future<?> reconnectionTaskResult = this.reconnectionService
-                                .schedule(openConnectionTask,
-                                        this.betweenTrialTimeMillis,
-                                        TimeUnit.MILLISECONDS);
 
                         // stop any pending timer for the same gateway
                         Future<?> pendingTimer = this.activeReconnectionTimers
@@ -1133,6 +1128,12 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         {
                             pendingTimer.cancel(true);
                         }
+
+                        // schedule
+                        Future<?> reconnectionTaskResult = this.reconnectionService
+                                .schedule(openConnectionTask,
+                                        this.betweenTrialTimeMillis,
+                                        TimeUnit.MILLISECONDS);
 
                         // store the future
                         this.activeReconnectionTimers.put(gwIdentifier,
