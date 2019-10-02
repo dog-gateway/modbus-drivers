@@ -843,12 +843,12 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     case RTU_TCP:
                     case RTU_UDP:
                         this.openConnection(register.getGatewayIdentifier(),
-                                gwAddress, gwPort, gwProtocolVariant);
+                                gwAddress, gwPort, gwProtocolVariant, false);
                         break;
                     case RTU:
                         this.openConnection(register.getGatewayIdentifier(),
                                 gwAddress, gwPort, gwProtocolVariant,
-                                serialParameters);
+                                serialParameters, false);
                         break;
                 }
 
@@ -1027,7 +1027,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     private void openConnection(final String gwIdentifier,
             final InetAddress gwAddress, final int gwPort,
             final ModbusProtocolVariant gwProtocol,
-            final SerialParameters serialParameters)
+            final SerialParameters serialParameters, final boolean isRetrial)
     {
         if (!this.connectionPool.containsKey(gwIdentifier))
         {
@@ -1075,9 +1075,17 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 // connect to the gateway
                 try
                 {
-                    connection.connect();
+                    // try connecting if it is a re-trial or if it is not a
+                    // re-trial and there are no pending reconnection timers for
+                    // the gateway.
+                    if (isRetrial
+                            || (!isRetrial && !this.activeReconnectionTimers
+                                    .containsKey(gwIdentifier)))
+                    {
+                        connection.connect();
 
-                    this.connectionPool.put(gwIdentifier, connection);
+                        this.connectionPool.put(gwIdentifier, connection);
+                    }
 
                 }
                 catch (Exception e)
@@ -1107,7 +1115,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                             {
                                 // TODO Auto-generated method stub
                                 openConnection(gwIdentifier, gwAddress, gwPort,
-                                        gwProtocol, serialParameters);
+                                        gwProtocol, serialParameters, true);
                             }
 
                         };
@@ -1163,9 +1171,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
      */
     private void openConnection(final String gwIdentifier,
             final InetAddress gwAddress, final int gwPort,
-            final ModbusProtocolVariant gwProtocol)
+            final ModbusProtocolVariant gwProtocol, boolean isRetrial)
     {
-        openConnection(gwIdentifier, gwAddress, gwPort, gwProtocol, null);
+        openConnection(gwIdentifier, gwAddress, gwPort, gwProtocol, null,
+                isRetrial);
     }
 
     /**
@@ -1198,7 +1207,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             {
                 // TODO Auto-generated method stub
                 openConnection(gwIdentifier, gwAddress, gwPort, gwProtocol,
-                        serialParameters);
+                        serialParameters, true);
             }
 
         };
