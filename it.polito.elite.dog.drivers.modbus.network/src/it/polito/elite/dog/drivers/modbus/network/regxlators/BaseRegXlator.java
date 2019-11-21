@@ -401,9 +401,7 @@ public class BaseRegXlator
         this.logger = logger;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see java.lang.Object#hashCode()
      */
     @Override
@@ -420,15 +418,17 @@ public class BaseRegXlator
                 + ((registerSize == null) ? 0 : registerSize.hashCode());
         result = prime * result
                 + ((registerType == null) ? 0 : registerType.hashCode());
+        long temp;
+        temp = Double.doubleToLongBits(scaleFactor);
+        result = prime * result + (int) (temp ^ (temp >>> 32));
+        result = prime * result
+                + ((unitOfMeasure == null) ? 0 : unitOfMeasure.hashCode());
         result = prime * result
                 + ((wordOrder == null) ? 0 : wordOrder.hashCode());
-        result = prime * result + super.hashCode();
         return result;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
+    /* (non-Javadoc)
      * @see java.lang.Object#equals(java.lang.Object)
      */
     @Override
@@ -451,8 +451,6 @@ public class BaseRegXlator
             return false;
         if (registerType != other.registerType)
             return false;
-        if (wordOrder != other.wordOrder)
-            return false;
         if (Double.doubleToLongBits(scaleFactor) != Double
                 .doubleToLongBits(other.scaleFactor))
             return false;
@@ -462,6 +460,8 @@ public class BaseRegXlator
                 return false;
         }
         else if (!unitOfMeasure.equals(other.unitOfMeasure))
+            return false;
+        if (wordOrder != other.wordOrder)
             return false;
         return true;
     }
