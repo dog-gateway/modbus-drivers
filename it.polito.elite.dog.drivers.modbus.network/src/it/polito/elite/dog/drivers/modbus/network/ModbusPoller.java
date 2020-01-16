@@ -389,6 +389,7 @@ public class ModbusPoller extends Thread
                                         Set<ModbusDriverInstance> drivers = this.driver
                                                 .getRegister2Driver()
                                                 .get(register);
+
                                         if (drivers != null)
                                         {
                                             for (ModbusDriverInstance driver : drivers)
@@ -396,7 +397,8 @@ public class ModbusPoller extends Thread
                                                 // notify the value
                                                 driver.newMessageFromHouse(
                                                         register, value);
-                                                // set the device as reachable
+                                                // set the device as
+                                                // reachable
                                                 driver.setReachable(register,
                                                         true);
                                             }

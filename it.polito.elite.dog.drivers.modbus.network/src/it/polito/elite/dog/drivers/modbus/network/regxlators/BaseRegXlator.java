@@ -401,7 +401,9 @@ public class BaseRegXlator
         this.logger = logger;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see java.lang.Object#hashCode()
      */
     @Override
@@ -428,7 +430,9 @@ public class BaseRegXlator
         return result;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see java.lang.Object#equals(java.lang.Object)
      */
     @Override
@@ -814,7 +818,15 @@ public class BaseRegXlator
             {
                 if (value instanceof Number)
                 {
-                    buffer.putFloat(((Number) value).floatValue());
+                    // get the value
+                    float fValue = ((Number) value).floatValue();
+                    // scale the value if a scale factor is provided
+                    if (this.scaleFactor != 0)
+                    {
+                        fValue = (float) (fValue / this.scaleFactor);
+                    }
+                    // store the value
+                    buffer.putFloat(fValue);
                 }
                 break;
             }
@@ -822,8 +834,16 @@ public class BaseRegXlator
             {
                 if (value instanceof Number)
                 {
-                    buffer.putDouble(
-                            Double.valueOf(((Number) value).doubleValue()));
+                    // get the value
+                    double dValue = ((Number) value).doubleValue();
+
+                    // scale the value if a scale factor is provided
+                    if (this.scaleFactor != 0)
+                    {
+                        dValue = dValue / this.scaleFactor;
+                    }
+                    // store the value
+                    buffer.putDouble(dValue);
                 }
                 break;
             }
@@ -832,7 +852,15 @@ public class BaseRegXlator
             {
                 if (value instanceof Number)
                 {
-                    buffer.putShort(((Number) value).shortValue());
+                    // get the value
+                    short sValue = ((Number) value).shortValue();
+
+                    // scale the value if a scale factor is provided
+                    if (this.scaleFactor != 0)
+                    {
+                        sValue = (short) Math.round(sValue / this.scaleFactor);
+                    }
+                    buffer.putShort(sValue);
                 }
                 break;
             }
@@ -842,7 +870,15 @@ public class BaseRegXlator
             {
                 if (value instanceof Number)
                 {
-                    buffer.putInt(((Number) value).intValue());
+                    // get the value
+                    int iValue = ((Number) value).intValue();
+                    // scale the value if a scale factor is provided
+                    if (this.scaleFactor != 0)
+                    {
+                        iValue = (int) Math.round(iValue / this.scaleFactor);
+                    }
+                    // store the value
+                    buffer.putInt(iValue);
                 }
                 break;
             }
@@ -851,12 +887,19 @@ public class BaseRegXlator
             {
                 if (value instanceof Number)
                 {
+                    // get the value
+                    long lValue = ((Number) value).longValue();
+                    // scale the value if a scale factor is provided
+                    if (this.scaleFactor != 0)
+                    {
+                        lValue = Math.round(lValue / this.scaleFactor);
+                    }
                     // wrap into 64bit (8 bytes) and then extract the last 6
                     // bytes.
                     // recall that ByteBuffer is by default BIG_ENDIAN
                     byte[] extendedBuffer = new byte[8];
                     buffer = ByteBuffer.wrap(extendedBuffer);
-                    buffer.putLong(((Number) value).longValue());
+                    buffer.putLong(lValue);
 
                     // extract value
                     for (int i = 0; i < registerBytes.length; i++)
@@ -872,7 +915,14 @@ public class BaseRegXlator
             {
                 if (value instanceof Number)
                 {
-                    buffer.putLong(((Number) value).longValue());
+                    // get the value
+                    long lValue = ((Number) value).longValue();
+                    // scale the value if a scale factor is provided
+                    if (this.scaleFactor != 0)
+                    {
+                        lValue = Math.round(lValue / this.scaleFactor);
+                    }
+                    buffer.putLong(lValue);
                 }
                 break;
             }
