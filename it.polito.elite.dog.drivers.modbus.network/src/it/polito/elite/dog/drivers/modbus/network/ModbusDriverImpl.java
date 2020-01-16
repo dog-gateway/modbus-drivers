@@ -54,8 +54,8 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledExecutorService;
@@ -825,7 +825,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         if (registers == null)
         {
             // create the new entry
-            registers = new TreeSet<ModbusRegisterInfo>();
+            registers = new ConcurrentSkipListSet<ModbusRegisterInfo>();
             this.gatewayAddress2Registers.put(register.getGatewayIdentifier(),
                     registers);
         }
