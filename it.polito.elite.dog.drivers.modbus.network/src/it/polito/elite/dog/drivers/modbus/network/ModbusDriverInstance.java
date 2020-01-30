@@ -355,125 +355,168 @@ public abstract class ModbusDriverInstance extends
      */
     private void fillConfiguration()
     {
-        // Gets the properties shared by almost all Modbus devices, i.e. the
-        // register address, the slave id, the register type and the unit of
-        // measure.
+        // Handle shared properties, typically not specified.
 
+        // Handle command-specific parameters
+        this.fillCommandConfiguration();
+        // Handle notification-specific parameters
+        this.fillNotificationConfiguration();
+
+    }
+
+    /**
+     * Fill the relevant parameters that are defined in the specific command
+     * sections. It must be noticed that only one register may be associated to
+     * a single command.
+     */
+    private void fillCommandConfiguration()
+    {
         // get parameters associated to each device command (if any)
         Set<ElementDescription> commandsSpecificParameters = this.device
                 .getDeviceDescriptor().getCommandSpecificParams();
 
+        // --------------- Handle command specific parameters ----------------
+        for (ElementDescription parameter : commandsSpecificParameters)
+        {
+            // the parameter map
+            Map<String, String> params = parameter.getElementParams();
+
+            if (params != null && !params.isEmpty())
+            {
+
+                // get the real command name
+                String realCommandName = params.get(ModbusInfo.COMMAND_NAME);
+                // get the command id
+                String commandId = parameter.getElementName();
+                // get the command class
+                String commandClass = parameter.getElementType();
+
+                // build a command representation
+                CNParameters commandInfo = new CNParameters(realCommandName,
+                        commandId, commandClass, params);
+
+                try
+                {
+
+                    ModbusRegisterInfo registerInfo = this
+                            .extractRegisterSpecificParameters(params);
+
+                    // check that a register info has been extracted
+                    if (registerInfo != null && !registerInfo.isEmpty())
+                    {
+                        // add the command to data point entry
+                        this.command2Register.put(commandInfo, registerInfo);
+
+                        // add the datapoint to the set of managed datapoints
+                        this.managedRegisters.add(registerInfo);
+                    }
+                }
+                catch (UnknownHostException uhe)
+                {
+                    // log the error
+                    this.logger.error(
+                            "Error while parsing register-specific information: \n{}",
+                            uhe);
+
+                }
+                catch (NumberFormatException nfe)
+                {
+                    // log the error
+                    this.logger.error(
+                            "Error while parsing register-specific information: \n{}",
+                            nfe);
+
+                }
+
+            }
+
+        }
+    }
+
+    /**
+     * Fill the relevant parameters that are defined in the specific
+     * notification sections. It must be noticed that a single register may be
+     * associated to more than one notification, as such, the
+     * register2Notification datastructure might in principle contain more than
+     * one notification per each register.
+     */
+    private void fillNotificationConfiguration()
+    {
         // get parameters associated to each device notification (if any)
         Set<ElementDescription> notificationsSpecificParameters = this.device
                 .getDeviceDescriptor().getNotificationSpecificParams();
 
-        // --------------- Handle command specific parameters ----------------
-        for (ElementDescription parameter : commandsSpecificParameters)
-        {
-            try
-            {
-                // the parameter map
-                Map<String, String> params = parameter.getElementParams();
-
-                // get the real command name
-                String realCommandName = params.get(ModbusInfo.COMMAND_NAME);
-
-                ModbusRegisterInfo registerInfo = this
-                        .extractRegisterSpecificParameters(params);
-
-                // check that a register info has been extracted
-                if (registerInfo != null && !registerInfo.isEmpty())
-                {
-                    CNParameters cmdInfo = new CNParameters(realCommandName,
-                            parameter.getElementParams());
-                    // add the command to data point entry
-                    this.command2Register.put(cmdInfo, registerInfo);
-
-                    // add the datapoint to the set of managed datapoints
-                    this.managedRegisters.add(registerInfo);
-                }
-
-            }
-            catch (UnknownHostException uhe)
-            {
-                // log the error
-                this.logger.error(
-                        "Error while parsing register-specific information: \n{}",
-                        uhe);
-
-            }
-            catch (NumberFormatException nfe)
-            {
-                // log the error
-                this.logger.error(
-                        "Error while parsing register-specific information: \n{}",
-                        nfe);
-
-            }
-        }
-
-        // ----- Handle notification specific parameters ----------
-
         for (ElementDescription parameter : notificationsSpecificParameters)
         {
-            try
-            {
-                // the parameter map
-                Map<String, String> params = parameter.getElementParams();
 
+            // the parameter map
+            Map<String, String> params = parameter.getElementParams();
+            if ((params != null) && (!params.isEmpty()))
+            {
+                // the notification class
+                String notificationClass = parameter.getElementType();
+                // the unique id of the notification
+                String notificationId = parameter.getElementName();
                 // get the notification name
                 String notificationName = params
                         .get(ModbusInfo.NOTIFICATION_NAME);
 
-                // extract the register info given the notification parameters
-                ModbusRegisterInfo registerInfo = this
-                        .extractRegisterSpecificParameters(params);
+                // build a descriptor for these notification parameters
+                CNParameters notificationInfo = new CNParameters(
+                        notificationName, notificationId, notificationClass,
+                        params);
 
-                // check that a register info has been extracted
-                if (registerInfo != null && !registerInfo.isEmpty())
+                try
                 {
+                    // extract the register info given the notification
+                    // parameters
+                    ModbusRegisterInfo registerInfo = this
+                            .extractRegisterSpecificParameters(params);
 
-                    // fill the data point to notification map, if the data
-                    // point has never been registered create a new entry in the
-                    // map.
-                    Set<CNParameters> notificationNames = this.register2Notification
-                            .get(registerInfo);
-
-                    if (notificationNames == null)
+                    // check that a register info has been extracted
+                    if (registerInfo != null && !registerInfo.isEmpty())
                     {
-                        notificationNames = new HashSet<CNParameters>();
-                        this.register2Notification.put(registerInfo,
-                                notificationNames);
+
+                        // fill the data point to notification map, if the data
+                        // point has never been registered create a new entry in
+                        // the map.
+                        Set<CNParameters> notificationNames = this.register2Notification
+                                .get(registerInfo);
+
+                        if (notificationNames == null)
+                        {
+                            notificationNames = new HashSet<CNParameters>();
+                            this.register2Notification.put(registerInfo,
+                                    notificationNames);
+                        }
+
+                        // add the notification info to the set of notifications
+                        // associated to the register
+                        notificationNames.add(notificationInfo);
+
+                        // add the register to the set of managed registers
+                        this.managedRegisters.add(registerInfo);
                     }
-
-                    // add the notification name to the set associated to the dp
-                    // datapoint
-                    CNParameters nInfo = new CNParameters(notificationName,
-                            parameter.getElementParams());
-                    notificationNames.add(nInfo);
-
-                    // add the datapoint to the set of managed datapoints
-                    this.managedRegisters.add(registerInfo);
                 }
 
-            }
-            catch (UnknownHostException uhe)
-            {
-                // log the error
-                this.logger.error(
-                        "Error while parsing register-specific information: \n{}",
-                        uhe);
+                catch (UnknownHostException uhe)
+                {
+                    // log the error
+                    this.logger.error(
+                            "Error while parsing register-specific information: \n{}",
+                            uhe);
 
-            }
-            catch (NumberFormatException nfe)
-            {
-                // log the error
-                this.logger.error("Error while parsing register-specific"
-                        + " information: \n{}", nfe);
+                }
+                catch (NumberFormatException nfe)
+                {
+                    // log the error
+                    this.logger.error("Error while parsing register-specific"
+                            + " information: \n{}", nfe);
 
+                }
             }
+
         }
-
     }
 
     private ModbusRegisterInfo extractRegisterSpecificParameters(
