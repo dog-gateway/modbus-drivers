@@ -732,6 +732,12 @@ public class BaseRegXlator
                     }
                 }
             }
+            else
+            {
+                this.logger.warn("Request translation for " + registers.length
+                        + " registers, expecting "
+                        + this.registerSize.getNRegisters());
+            }
         }
 
         return result;
@@ -823,10 +829,10 @@ public class BaseRegXlator
                     // scale the value if a scale factor is provided
                     if (this.scaleFactor != 0)
                     {
-                        fValue =  (fValue / this.scaleFactor);
+                        fValue = (fValue / this.scaleFactor);
                     }
                     // store the value
-                    buffer.putFloat((float)fValue);
+                    buffer.putFloat((float) fValue);
                 }
                 break;
             }
@@ -860,7 +866,7 @@ public class BaseRegXlator
                     {
                         sValue = Math.round(sValue / this.scaleFactor);
                     }
-                    buffer.putShort((short)sValue);
+                    buffer.putShort((short) sValue);
                 }
                 break;
             }
@@ -878,7 +884,7 @@ public class BaseRegXlator
                         iValue = Math.round(iValue / this.scaleFactor);
                     }
                     // store the value
-                    buffer.putInt((int)iValue);
+                    buffer.putInt((int) iValue);
                 }
                 break;
             }
@@ -899,7 +905,7 @@ public class BaseRegXlator
                     // recall that ByteBuffer is by default BIG_ENDIAN
                     byte[] extendedBuffer = new byte[8];
                     buffer = ByteBuffer.wrap(extendedBuffer);
-                    buffer.putLong((long)lValue);
+                    buffer.putLong((long) lValue);
 
                     // extract value
                     for (int i = 0; i < registerBytes.length; i++)
@@ -922,7 +928,7 @@ public class BaseRegXlator
                     {
                         lValue = Math.round(lValue / this.scaleFactor);
                     }
-                    buffer.putLong((long)lValue);
+                    buffer.putLong((long) lValue);
                 }
                 break;
             }

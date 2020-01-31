@@ -20,6 +20,7 @@ package it.polito.elite.dog.drivers.modbus.network;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
+import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 import net.wimpi.modbus.Modbus;
 import net.wimpi.modbus.ModbusException;
 import net.wimpi.modbus.ModbusIOException;
@@ -332,6 +333,16 @@ public class ModbusPoller extends Thread
                         // get the current register
                         ModbusRegisterInfo register = regIterator.next();
 
+                        // debug for read register
+                        this.logger.debug("Querying register: "
+                                + register.getAddress() + " on slave "
+                                + register.getSlaveId() + " of type "
+                                + ((BaseRegXlator) register.getXlator())
+                                        .getRegisterType()
+                                + " and size "
+                                + ((BaseRegXlator) register.getXlator())
+                                        .getRegisterSize());
+
                         // prepare the read request using the register
                         // translator
                         // for composing the right Modbus request...
@@ -340,6 +351,10 @@ public class ModbusPoller extends Thread
 
                         // set the slave id associated to the given register
                         readRequest.setUnitID(register.getSlaveId());
+
+                        // debug
+                        this.logger
+                                .debug("Sent: " + readRequest.getHexMessage());
 
                         // create a modbus tcp transaction for the just created
                         // readRequest
