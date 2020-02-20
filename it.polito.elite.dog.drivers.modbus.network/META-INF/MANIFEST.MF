@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: ModbusNetworkDriver
 Bundle-SymbolicName: it.polito.elite.dog.drivers.modbus.network
-Bundle-Version: 1.2.5
+Bundle-Version: 1.2.6
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Import-Package: gnu.io;version="1.0.0",
  it.polito.elite.dog.core.library.model,
