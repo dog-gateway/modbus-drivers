@@ -30,7 +30,6 @@ import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import net.wimpi.modbus.util.SerialParameters;
 
 import java.lang.reflect.Method;
-import java.util.Set;
 
 import javax.measure.DecimalMeasure;
 import javax.measure.Measure;
@@ -132,47 +131,42 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance
         if (value != null && value instanceof DecimalMeasure)
         {
             // gets the corresponding notification set...
-            Set<CNParameters> notificationInfos = this.register2Notification
+            CNParameters notificationInfo = this.register2Notification
                     .get(register);
 
-            // handle the notifications
-            for (CNParameters notificationInfo : notificationInfos)
+            // black magic here...
+            String notificationName = notificationInfo.getName();
+
+            // get the hypothetical class method name
+            String notifyMethod = "notify"
+                    + Character.toUpperCase(notificationName.charAt(0))
+                    + notificationName.substring(1);
+
+            // search the method and execute it
+            try
             {
-                // black magic here...
-                String notificationName = notificationInfo.getName();
+                // log notification
+                this.logger.debug("Device: " + this.device.getDeviceId()
+                        + " is notifying " + notificationName + " value:"
+                        + value);
+                // get the method
 
-                // get the hypothetical class method name
-                String notifyMethod = "notify"
-                        + Character.toUpperCase(notificationName.charAt(0))
-                        + notificationName.substring(1);
-
-                // search the method and execute it
-                try
-                {
-                    // log notification
-                    this.logger.debug("Device: " + this.device.getDeviceId()
-                            + " is notifying " + notificationName + " value:"
-                            + value);
-                    // get the method
-
-                    Method notify = ModbusCo2SensorDriverInstance.class
-                            .getDeclaredMethod(notifyMethod, Measure.class);
-                    // invoke the method
-                    notify.invoke(this, value);
-                }
-                catch (Exception e)
-                {
-                    // log the error
-                    this.logger.warn(
-                            "Unable to find a suitable notification method for the datapoint: "
-                                    + register + ":\n" + e);
-                }
-
-                // notify the monitor admin
-                this.updateStatus();
+                Method notify = ModbusCo2SensorDriverInstance.class
+                        .getDeclaredMethod(notifyMethod, Measure.class);
+                // invoke the method
+                notify.invoke(this, value);
             }
-        }
+            catch (Exception e)
+            {
+                // log the error
+                this.logger.warn(
+                        "Unable to find a suitable notification method for the datapoint: "
+                                + register + ":\n" + e);
+            }
 
+            // notify the monitor admin
+            this.updateStatus();
+        }
     }
 
     /*
@@ -226,17 +220,13 @@ public class ModbusCo2SensorDriverInstance extends ModbusDriverInstance
         // configuration
         for (ModbusRegisterInfo register : this.register2Notification.keySet())
         {
-            Set<CNParameters> notificationInfos = this.register2Notification
+            CNParameters notificationInfo = this.register2Notification
                     .get(register);
 
-            for (CNParameters notificationInfo : notificationInfos)
+            if (notificationInfo.getName().equalsIgnoreCase(
+                    Co2MeasurementNotification.notificationName))
             {
-
-                if (notificationInfo.getName().equalsIgnoreCase(
-                        Co2MeasurementNotification.notificationName))
-                {
-                    Co2UOM = register.getXlator().getUnitOfMeasure();
-                }
+                Co2UOM = register.getXlator().getUnitOfMeasure();
             }
         }
 

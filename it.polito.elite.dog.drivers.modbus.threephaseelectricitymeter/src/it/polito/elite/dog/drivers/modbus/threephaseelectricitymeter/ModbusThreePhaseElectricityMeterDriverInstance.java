@@ -62,7 +62,6 @@ import org.osgi.service.log.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
-import java.util.Set;
 
 import javax.measure.DecimalMeasure;
 import javax.measure.Measure;
@@ -335,59 +334,53 @@ public class ModbusThreePhaseElectricityMeterDriverInstance
         if (value != null && value instanceof DecimalMeasure)
         {
             // gets the corresponding notification set...
-            Set<CNParameters> notificationInfos = this.register2Notification
+            CNParameters notificationInfo = this.register2Notification
                     .get(register);
 
-            // handle the notifications
-            for (CNParameters notificationInfo : notificationInfos)
+            // black magic here...
+            String notificationName = notificationInfo.getName();
+
+            // get the hypothetical class method name
+            String notifyMethod = "notify"
+                    + Character.toUpperCase(notificationName.charAt(0))
+                    + notificationName.substring(1);
+
+            // search the method and execute it
+            try
             {
-                // black magic here...
-                String notificationName = notificationInfo.getName();
-
-                // get the hypothetical class method name
-                String notifyMethod = "notify"
-                        + Character.toUpperCase(notificationName.charAt(0))
-                        + notificationName.substring(1);
-
-                // search the method and execute it
-                try
+                // log notification
+                this.logger.debug("Device: " + this.device.getDeviceId()
+                        + " is notifying " + notificationName + " value:"
+                        + value);
+                // get the method
+                if (notificationInfo.getParameters().containsKey("phaseID"))
                 {
-                    // log notification
-                    this.logger.debug("Device: " + this.device.getDeviceId()
-                            + " is notifying " + notificationName + " value:"
-                            + value);
-                    // get the method
-                    if (notificationInfo.getParameters().containsKey("phaseID"))
-                    {
-                        Method notify = ModbusThreePhaseElectricityMeterDriverInstance.class
-                                .getDeclaredMethod(notifyMethod, String.class,
-                                        Measure.class);
-                        // invoke the method
-                        notify.invoke(this,
-                                notificationInfo.getParameters().get("phaseID"),
-                                value);
-                    }
-                    else
-                    {
-                        Method notify = ModbusThreePhaseElectricityMeterDriverInstance.class
-                                .getDeclaredMethod(notifyMethod, Measure.class);
-                        // invoke the method
-                        notify.invoke(this, value);
-                    }
+                    Method notify = ModbusThreePhaseElectricityMeterDriverInstance.class
+                            .getDeclaredMethod(notifyMethod, String.class,
+                                    Measure.class);
+                    // invoke the method
+                    notify.invoke(this,
+                            notificationInfo.getParameters().get("phaseID"),
+                            value);
                 }
-                catch (Exception e)
+                else
                 {
-                    // log the error
-                    this.logger.warn("Unable to find a suitable notification "
-                            + "method for the datapoint: " + register + ":\n"
-                            + e);
+                    Method notify = ModbusThreePhaseElectricityMeterDriverInstance.class
+                            .getDeclaredMethod(notifyMethod, Measure.class);
+                    // invoke the method
+                    notify.invoke(this, value);
                 }
-
-                // notify the monitor admin
-                this.updateStatus();
             }
-        }
+            catch (Exception e)
+            {
+                // log the error
+                this.logger.warn("Unable to find a suitable notification "
+                        + "method for the datapoint: " + register + ":\n" + e);
+            }
 
+            // notify the monitor admin
+            this.updateStatus();
+        }
     }
 
     @Override
@@ -432,58 +425,55 @@ public class ModbusThreePhaseElectricityMeterDriverInstance
         // configuration
         for (ModbusRegisterInfo register : this.register2Notification.keySet())
         {
-            Set<CNParameters> notificationInfos = this.register2Notification
+            CNParameters notificationInfo = this.register2Notification
                     .get(register);
 
-            for (CNParameters notificationInfo : notificationInfos)
+            if (notificationInfo.getName().equalsIgnoreCase(
+                    SinglePhaseActiveEnergyMeasurementNotification.notificationName))
             {
-
-                if (notificationInfo.getName().equalsIgnoreCase(
-                        SinglePhaseActiveEnergyMeasurementNotification.notificationName))
-                {
-                    activeEnergyUOM = register.getXlator().getUnitOfMeasure();
-                }
-                else if (notificationInfo.getName().equalsIgnoreCase(
-                        SinglePhaseReactiveEnergyMeasurementNotification.notificationName))
-                {
-                    reactiveEnergyUOM = register.getXlator().getUnitOfMeasure();
-                }
-                else if (notificationInfo.getName().equalsIgnoreCase(
-                        ThreePhaseReactivePowerMeasurementNotification.notificationName))
-                {
-                    reactivePowerUOM = register.getXlator().getUnitOfMeasure();
-                }
-                else if (notificationInfo.getName().equalsIgnoreCase(
-                        ThreePhaseActivePowerMeasurementNotification.notificationName))
-                {
-                    activePowerUOM = register.getXlator().getUnitOfMeasure();
-                }
-                else if (notificationInfo.getName().equalsIgnoreCase(
-                        SimpleFrequencyMeasurementNotification.notificationName))
-                {
-                    frequencyUOM = register.getXlator().getUnitOfMeasure();
-                }
-                else if (notificationInfo.getName().equalsIgnoreCase(
-                        ThreePhaseCurrentMeasurementNotification.notificationName))
-                {
-                    currentUOM = register.getXlator().getUnitOfMeasure();
-                }
-                else if (notificationInfo.getName().equalsIgnoreCase(
-                        ThreePhaseApparentPowerMeasurementNotification.notificationName))
-                {
-                    apparentPowerUOM = register.getXlator().getUnitOfMeasure();
-                }
-                else if (notificationInfo.getName().equalsIgnoreCase(
-                        ThreePhaseLNVoltageMeasurementNotification.notificationName))
-                {
-                    voltageUOM = register.getXlator().getUnitOfMeasure();
-                }
-                /*
-                 * else if (this.register2Notification.get(register).contains(
-                 * ThreePhaseLLVoltageMeasurementNotification.notificationName))
-                 * { frequencyUOM = register.getXlator().getUnitOfMeasure(); }
-                 */
+                activeEnergyUOM = register.getXlator().getUnitOfMeasure();
             }
+            else if (notificationInfo.getName().equalsIgnoreCase(
+                    SinglePhaseReactiveEnergyMeasurementNotification.notificationName))
+            {
+                reactiveEnergyUOM = register.getXlator().getUnitOfMeasure();
+            }
+            else if (notificationInfo.getName().equalsIgnoreCase(
+                    ThreePhaseReactivePowerMeasurementNotification.notificationName))
+            {
+                reactivePowerUOM = register.getXlator().getUnitOfMeasure();
+            }
+            else if (notificationInfo.getName().equalsIgnoreCase(
+                    ThreePhaseActivePowerMeasurementNotification.notificationName))
+            {
+                activePowerUOM = register.getXlator().getUnitOfMeasure();
+            }
+            else if (notificationInfo.getName().equalsIgnoreCase(
+                    SimpleFrequencyMeasurementNotification.notificationName))
+            {
+                frequencyUOM = register.getXlator().getUnitOfMeasure();
+            }
+            else if (notificationInfo.getName().equalsIgnoreCase(
+                    ThreePhaseCurrentMeasurementNotification.notificationName))
+            {
+                currentUOM = register.getXlator().getUnitOfMeasure();
+            }
+            else if (notificationInfo.getName().equalsIgnoreCase(
+                    ThreePhaseApparentPowerMeasurementNotification.notificationName))
+            {
+                apparentPowerUOM = register.getXlator().getUnitOfMeasure();
+            }
+            else if (notificationInfo.getName().equalsIgnoreCase(
+                    ThreePhaseLNVoltageMeasurementNotification.notificationName))
+            {
+                voltageUOM = register.getXlator().getUnitOfMeasure();
+            }
+            /*
+             * else if (this.register2Notification.get(register).contains(
+             * ThreePhaseLLVoltageMeasurementNotification.notificationName)) {
+             * frequencyUOM = register.getXlator().getUnitOfMeasure(); }
+             */
+
         }
 
         // create all the states

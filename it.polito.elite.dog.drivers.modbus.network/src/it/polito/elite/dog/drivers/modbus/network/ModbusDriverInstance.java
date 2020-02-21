@@ -92,7 +92,7 @@ public abstract class ModbusDriverInstance extends
     protected Set<ModbusRegisterInfo> managedRegisters;
 
     // the datapoint to notifications map
-    protected Map<ModbusRegisterInfo, Set<CNParameters>> register2Notification;
+    protected Map<ModbusRegisterInfo, CNParameters> register2Notification;
 
     // the command2datapoint map
     protected Map<CNParameters, ModbusRegisterInfo> command2Register;
@@ -138,7 +138,7 @@ public abstract class ModbusDriverInstance extends
         this.gatewayRequestGap = gatewayRequestGap;
 
         // create the map needed to associate data points to notifications
-        this.register2Notification = new ConcurrentHashMap<ModbusRegisterInfo, Set<CNParameters>>();
+        this.register2Notification = new ConcurrentHashMap<ModbusRegisterInfo, CNParameters>();
 
         // create the map to associate commands and data points
         this.command2Register = new ConcurrentHashMap<CNParameters, ModbusRegisterInfo>();
@@ -477,22 +477,8 @@ public abstract class ModbusDriverInstance extends
                     if (registerInfo != null && !registerInfo.isEmpty())
                     {
 
-                        // fill the data point to notification map, if the data
-                        // point has never been registered create a new entry in
-                        // the map.
-                        Set<CNParameters> notificationNames = this.register2Notification
-                                .get(registerInfo);
-
-                        if (notificationNames == null)
-                        {
-                            notificationNames = new HashSet<CNParameters>();
-                            this.register2Notification.put(registerInfo,
-                                    notificationNames);
-                        }
-
-                        // add the notification info to the set of notifications
-                        // associated to the register
-                        notificationNames.add(notificationInfo);
+                        // fill the data point to notification map, 
+                        this.register2Notification.put(registerInfo, notificationInfo);
 
                         // add the register to the set of managed registers
                         this.managedRegisters.add(registerInfo);
