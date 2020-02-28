@@ -23,6 +23,7 @@ import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
+import it.polito.elite.dog.drivers.modbus.network.protocol.NetworkError;
 import net.wimpi.modbus.util.SerialParameters;
 
 import org.osgi.framework.BundleContext;
@@ -96,8 +97,8 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
     @Override
     protected void specificConfiguration()
     {
-        // TODO Auto-generated method stub
-
+        // register the gateway driver for diagnostic notifications
+        this.network.addGateway(this);
     }
 
     @Override
@@ -116,4 +117,16 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
         // state is actually associated to a Modbus gateway)
         this.currentState = new DeviceStatus(device.getDeviceId());
     }
+
+    @Override
+    protected void setReachable(ModbusRegisterInfo dataPointInfo,
+            boolean reachable, NetworkError error)
+    {
+        // set the gateway status
+        this.setDeviceOnline(reachable);
+        // log
+        this.logger.info("Gateway " + this.getGatewayIdentifier() + " is "
+                + (reachable ? "reachable" : "not reachable"));
+    }
+
 }

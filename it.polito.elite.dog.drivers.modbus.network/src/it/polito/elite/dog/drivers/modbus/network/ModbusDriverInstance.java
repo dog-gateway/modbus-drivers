@@ -30,6 +30,7 @@ import it.polito.elite.dog.drivers.modbus.network.info.OrderEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
+import it.polito.elite.dog.drivers.modbus.network.protocol.NetworkError;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.RegXlatorTypes;
 import net.wimpi.modbus.util.SerialParameters;
@@ -170,14 +171,22 @@ public abstract class ModbusDriverInstance extends
      * This information may be used by the driver, e.g., to trigger a device
      * registration update.
      * 
+     * Must be overridden by Multiple devices and/or by devices needing to
+     * handle network errors.
+     * 
      * @param dataPointInfo
+     *            The register whose reachability changed.
+     * @param reachable
+     *            The reachability status, as a boolean value (true for
+     *            reachable, false otherwise).
+     * @param error
+     *            The error which caused a register to be marked as not
+     *            reachble, null if reachable = true.
      */
     protected void setReachable(ModbusRegisterInfo dataPointInfo,
-            boolean reachable)
+            boolean reachable, NetworkError error)
     {
-        // TODO: handle the case of complex devices which are handling more than
-        // one register.
-        this.setDeviceOnline(reachable);
+        // do nothing
     }
 
     /*
@@ -346,6 +355,64 @@ public abstract class ModbusDriverInstance extends
         return this.gatewayRequestGap;
     }
 
+    /**
+     * Get a unique identifier for the gateway to which this driver instance is
+     * connected
+     * 
+     * @return the gateway identifier, or null.
+     */
+    public String getGatewayIdentifier()
+    {
+        String identifier = null;
+        try
+        {
+
+            switch (ModbusProtocolVariant.valueOf(this.gwProtocol))
+            {
+                case TCP:
+                {
+                    identifier = "tcp://" + InetAddress
+                            .getByName(this.gwAddress).getHostAddress() + ":"
+                            + this.gwPort;
+                    break;
+                }
+                case RTU:
+                {
+                    identifier = "rtu://" + this.serialParameters.getPortName();
+                    break;
+                }
+                case RTU_TCP:
+                {
+                    identifier = "rtu_tcp://" + InetAddress
+                            .getByName(this.gwAddress).getHostAddress() + ":"
+                            + this.gwPort;
+                    break;
+                }
+                case RTU_UDP:
+                {
+                    identifier = "rtu_udp://" + InetAddress
+                            .getByName(this.gwAddress).getHostAddress() + ":"
+                            + this.gwPort;
+                    break;
+                }
+                default:
+                {
+                    // null
+                    identifier = null;
+                    break;
+                }
+            }
+        }
+        catch (UnknownHostException uhe)
+        {
+            // do nothing but logging
+            this.logger.warn("Unable to provide gateway identifier as the host "
+                    + "address is unknown.");
+        }
+
+        return identifier;
+    }
+
     // -------- PRIVATE METHODS ----------
 
     /***
@@ -477,8 +544,9 @@ public abstract class ModbusDriverInstance extends
                     if (registerInfo != null && !registerInfo.isEmpty())
                     {
 
-                        // fill the data point to notification map, 
-                        this.register2Notification.put(registerInfo, notificationInfo);
+                        // fill the data point to notification map,
+                        this.register2Notification.put(registerInfo,
+                                notificationInfo);
 
                         // add the register to the set of managed registers
                         this.managedRegisters.add(registerInfo);
@@ -648,7 +716,7 @@ public abstract class ModbusDriverInstance extends
      *            True if the device is connected and can be read, false
      *            otherwise.
      */
-    private void setDeviceOnline(boolean online)
+    protected void setDeviceOnline(boolean online)
     {
         if (this.device instanceof AbstractDevice)
         {
