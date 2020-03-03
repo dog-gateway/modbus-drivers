@@ -6,6 +6,7 @@ Bundle-Version: 1.2.6
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Import-Package: gnu.io;version="1.0.0",
  it.polito.elite.dog.core.library.model,
+ it.polito.elite.dog.core.library.model.diagnostics,
  it.polito.elite.dog.core.library.util,
  javax.measure;version="4.3.1",
  javax.measure.unit;version="4.3.1",

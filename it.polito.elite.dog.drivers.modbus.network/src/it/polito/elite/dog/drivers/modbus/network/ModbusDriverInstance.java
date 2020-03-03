@@ -22,6 +22,7 @@ import it.polito.elite.dog.core.library.model.CNParameters;
 import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
 import it.polito.elite.dog.core.library.model.StatefulDevice;
+import it.polito.elite.dog.core.library.model.diagnostics.DeviceDiagnostics;
 import it.polito.elite.dog.core.library.util.ElementDescription;
 import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
@@ -492,6 +493,22 @@ public abstract class ModbusDriverInstance extends
     }
 
     /**
+     * Handle the detection of a device being completely offline. Must be
+     * overridden by subclasses to provide specific handling of such events.
+     * Called only if the device connection status changes.
+     * 
+     * @param online
+     *            True if the device is online, false otherwise.
+     */
+    protected void handleConnectionStatus(boolean online)
+    {
+        // log that the error ceased
+        this.logger.info(
+                "Device " + this.device.getDeviceDescriptor().getDeviceURI()
+                        + " is " + (online ? "online." : "offline."));
+    }
+
+    /**
      * Sets the online flag of the device handled by this driver.
      * 
      * @param online
@@ -506,8 +523,33 @@ public abstract class ModbusDriverInstance extends
             if (aDevice.isOnline() != online)
             {
                 aDevice.setOnline(online);
+                this.handleConnectionStatus(online);
             }
         }
+    }
+
+    /**
+     * Fills a base {@link DeviceDiagnostics} object which can then be detailed
+     * by classes descending from {@link ModbusDriverInstance}.
+     * 
+     * @return The base {@link DeviceDiagnostics} instance filled with features
+     *         independent from the device type.
+     */
+    protected DeviceDiagnostics<Map<String, Object>> buildBaseDiagnostics()
+    {
+        // build a diagnostic object
+        DeviceDiagnostics<Map<String, Object>> deviceDiagnostics = new DeviceDiagnostics<Map<String, Object>>();
+
+        deviceDiagnostics
+                .setDeviceClass(this.device.getClass().getSimpleName());
+        deviceDiagnostics.setDeviceDriver(this.getClass().getSimpleName());
+        deviceDiagnostics.setDeviceGateway(
+                this.device.getDeviceDescriptor().getGateway());
+        deviceDiagnostics.setOnline(((AbstractDevice) this.device).isOnline());
+        deviceDiagnostics.setProtocol(this.device.getDeviceDescriptor()
+                .getTechnology().toLowerCase());
+
+        return deviceDiagnostics;
     }
 
     // -------- PRIVATE METHODS ----------
