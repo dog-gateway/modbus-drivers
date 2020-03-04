@@ -535,11 +535,8 @@ public abstract class ModbusDriverInstance extends
      * @return The base {@link DeviceDiagnostics} instance filled with features
      *         independent from the device type.
      */
-    protected DeviceDiagnostics<Map<String, Object>> buildBaseDiagnostics()
+    protected void buildBaseDiagnostics(DeviceDiagnostics<?> deviceDiagnostics)
     {
-        // build a diagnostic object
-        DeviceDiagnostics<Map<String, Object>> deviceDiagnostics = new DeviceDiagnostics<Map<String, Object>>();
-
         deviceDiagnostics
                 .setDeviceId(this.device.getDeviceDescriptor().getDeviceURI());
         deviceDiagnostics
@@ -550,8 +547,6 @@ public abstract class ModbusDriverInstance extends
         deviceDiagnostics.setOnline(((AbstractDevice) this.device).isOnline());
         deviceDiagnostics.setProtocol(this.device.getDeviceDescriptor()
                 .getTechnology().toLowerCase());
-
-        return deviceDiagnostics;
     }
 
     // -------- PRIVATE METHODS ----------
