@@ -541,6 +541,8 @@ public abstract class ModbusDriverInstance extends
         DeviceDiagnostics<Map<String, Object>> deviceDiagnostics = new DeviceDiagnostics<Map<String, Object>>();
 
         deviceDiagnostics
+                .setDeviceId(this.device.getDeviceDescriptor().getDeviceURI());
+        deviceDiagnostics
                 .setDeviceClass(this.device.getClass().getSimpleName());
         deviceDiagnostics.setDeviceDriver(this.getClass().getSimpleName());
         deviceDiagnostics.setDeviceGateway(
