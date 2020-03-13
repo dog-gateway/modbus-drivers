@@ -17,10 +17,10 @@
  */
 package it.polito.elite.dog.drivers.modbus.network;
 
+import it.polito.elite.dog.core.library.model.diagnostics.NetworkError;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
-import it.polito.elite.dog.drivers.modbus.network.protocol.NetworkError;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
 import net.wimpi.modbus.Modbus;
 import net.wimpi.modbus.ModbusException;

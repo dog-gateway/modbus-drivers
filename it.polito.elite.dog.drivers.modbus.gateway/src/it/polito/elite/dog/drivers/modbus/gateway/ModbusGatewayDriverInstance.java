@@ -20,10 +20,10 @@ package it.polito.elite.dog.drivers.modbus.gateway;
 import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
 import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
+import it.polito.elite.dog.core.library.model.diagnostics.NetworkError;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
-import it.polito.elite.dog.drivers.modbus.network.protocol.NetworkError;
 import net.wimpi.modbus.util.SerialParameters;
 
 import org.osgi.framework.BundleContext;
