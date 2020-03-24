@@ -22,6 +22,8 @@ import it.polito.elite.dog.core.library.model.CNParameters;
 import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
 import it.polito.elite.dog.core.library.model.StatefulDevice;
+import it.polito.elite.dog.core.library.model.diagnostics.DeviceDiagnostics;
+import it.polito.elite.dog.core.library.model.diagnostics.NetworkError;
 import it.polito.elite.dog.core.library.util.ElementDescription;
 import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
@@ -91,6 +93,9 @@ public abstract class ModbusDriverInstance extends
     // the datapoints managed by this driver
     protected Set<ModbusRegisterInfo> managedRegisters;
 
+    // the set of currently failed registers associated wth the last error code.
+    protected Map<ModbusRegisterInfo, NetworkError> failedRegisters;
+
     // the datapoint to notifications map
     protected Map<ModbusRegisterInfo, CNParameters> register2Notification;
 
@@ -146,6 +151,9 @@ public abstract class ModbusDriverInstance extends
         // create the set for storing the managed data points
         this.managedRegisters = new HashSet<ModbusRegisterInfo>();
 
+        // create the table of currently failed registers
+        this.failedRegisters = new ConcurrentHashMap<ModbusRegisterInfo, NetworkError>();
+
         // open the tracker
         this.open();
     }
@@ -164,21 +172,6 @@ public abstract class ModbusDriverInstance extends
      */
     public abstract void newMessageFromHouse(ModbusRegisterInfo dataPointInfo,
             Object value);
-
-    /**
-     * Notifies a device-specific driver of a currently unreachable register.
-     * This information may be used by the driver, e.g., to trigger a device
-     * registration update.
-     * 
-     * @param dataPointInfo
-     */
-    protected void setReachable(ModbusRegisterInfo dataPointInfo,
-            boolean reachable)
-    {
-        // TODO: handle the case of complex devices which are handling more than
-        // one register.
-        this.setDeviceOnline(reachable);
-    }
 
     /*
      * (non-Javadoc)
@@ -243,8 +236,6 @@ public abstract class ModbusDriverInstance extends
         }
     }
 
-    protected abstract void setUpDevice(ControllableDevice device);
-
     /*
      * (non-Javadoc)
      * 
@@ -262,26 +253,6 @@ public abstract class ModbusDriverInstance extends
         // release the device
         this.context.ungetService(reference);
     }
-
-    /**
-     * Extending classes might implement this method to provide driver-specific
-     * configurations to be done during the driver creation process, before
-     * associating the device-specific driver to the network driver
-     */
-    protected abstract void specificConfiguration();
-
-    /**
-     * Adds a device managed by a device-specific driver instance to the
-     * {@link ModbusNetwork} driver. It must be implemented by extending classes
-     * and it must take care of identifying any additional information needed to
-     * correctly specify the given register and to associate the corresponding
-     * {@link ModbusRegisterInfo} with the proper {@link ModbusDriverImpl}
-     * instance.
-     * 
-     * @param register
-     *            the register to add as a {@link ModbusRegisterInfo} instance.
-     */
-    protected abstract void addToNetworkDriver(ModbusRegisterInfo register);
 
     /**
      * Tries to retrieve the initial state of the device handled by this driver
@@ -344,6 +315,238 @@ public abstract class ModbusDriverInstance extends
     public long getGatewayRequestGap()
     {
         return this.gatewayRequestGap;
+    }
+
+    /**
+     * Get a unique identifier for the gateway to which this driver instance is
+     * connected
+     * 
+     * @return the gateway identifier, or null.
+     */
+    public String getGatewayIdentifier()
+    {
+        String identifier = null;
+        try
+        {
+
+            switch (ModbusProtocolVariant.valueOf(this.gwProtocol))
+            {
+                case TCP:
+                {
+                    identifier = "tcp://" + InetAddress
+                            .getByName(this.gwAddress).getHostAddress() + ":"
+                            + this.gwPort;
+                    break;
+                }
+                case RTU:
+                {
+                    identifier = "rtu://" + this.serialParameters.getPortName();
+                    break;
+                }
+                case RTU_TCP:
+                {
+                    identifier = "rtu_tcp://" + InetAddress
+                            .getByName(this.gwAddress).getHostAddress() + ":"
+                            + this.gwPort;
+                    break;
+                }
+                case RTU_UDP:
+                {
+                    identifier = "rtu_udp://" + InetAddress
+                            .getByName(this.gwAddress).getHostAddress() + ":"
+                            + this.gwPort;
+                    break;
+                }
+                default:
+                {
+                    // null
+                    identifier = null;
+                    break;
+                }
+            }
+        }
+        catch (UnknownHostException uhe)
+        {
+            // do nothing but logging
+            this.logger.warn("Unable to provide gateway identifier as the host "
+                    + "address is unknown.");
+        }
+
+        return identifier;
+    }
+
+    protected abstract void setUpDevice(ControllableDevice device);
+
+    /**
+     * Extending classes might implement this method to provide driver-specific
+     * configurations to be done during the driver creation process, before
+     * associating the device-specific driver to the network driver
+     */
+    protected abstract void specificConfiguration();
+
+    /**
+     * Adds a device managed by a device-specific driver instance to the
+     * {@link ModbusNetwork} driver. It must be implemented by extending classes
+     * and it must take care of identifying any additional information needed to
+     * correctly specify the given register and to associate the corresponding
+     * {@link ModbusRegisterInfo} with the proper {@link ModbusDriverImpl}
+     * instance.
+     * 
+     * @param register
+     *            the register to add as a {@link ModbusRegisterInfo} instance.
+     */
+    protected abstract void addToNetworkDriver(ModbusRegisterInfo register);
+
+    /**
+     * Notifies a device-specific driver of a currently unreachable register.
+     * This information may be used by the driver, e.g., to trigger a device
+     * registration update.
+     * 
+     * Must be overridden by Multiple devices and/or by devices needing to
+     * handle network errors.
+     * 
+     * @param dataPointInfo
+     *            The register whose reachability changed.
+     * @param reachable
+     *            The reachability status, as a boolean value (true for
+     *            reachable, false otherwise).
+     * @param error
+     *            The error which caused a register to be marked as not
+     *            reachble, null if reachable = true.
+     */
+    protected void setReachable(ModbusRegisterInfo dataPointInfo,
+            boolean reachable, NetworkError error)
+    {
+        if (!reachable)
+        {
+            // store the failed registers
+            NetworkError previousError = this.failedRegisters.put(dataPointInfo,
+                    error);
+
+            // if the previous error was null, than a new error occurred and
+            // should be notified
+            if (previousError == null)
+            {
+                this.handleNewError(dataPointInfo, error);
+            }
+
+            // check whether the number of registers is equal to the number of
+            // managed registers, in such a case set the device as offline.
+            if (this.managedRegisters.size() == this.failedRegisters.size())
+            {
+                this.setDeviceOnline(false);
+            }
+        }
+        else
+        {
+            // remove the register from the list of failed registers for this
+            // device
+            NetworkError previousError = this.failedRegisters
+                    .remove(dataPointInfo);
+
+            // notify the the register is no more failing
+            if (previousError != null)
+            {
+                this.handleErrorCeased(dataPointInfo);
+            }
+
+            // set the device as online
+            if (this.managedRegisters.size() > this.failedRegisters.size())
+            {
+                this.setDeviceOnline(true);
+            }
+        }
+    }
+
+    /**
+     * Handle the detection of an unknown error on a register. Must be
+     * overridden by subclasses to provide specific handling for such events.
+     * 
+     * @param register
+     *            The failing register.
+     * @param error
+     *            The failure cause.
+     */
+    protected void handleNewError(ModbusRegisterInfo register,
+            NetworkError error)
+    {
+        // log the error
+        this.logger.info("Unreachable register: " + register.getAddress()
+                + " on slave " + register.getSlaveId()
+                + " connected to gateway " + register.getGatewayIdentifier()
+                + ": " + (error != null ? error.getCause() : "unknown error"));
+    }
+
+    /**
+     * Handle the detection of a failure end on a specific register. Must be
+     * overridden by subclasses to provide specific handling of such events.
+     * 
+     * @param register
+     *            The register that is no more failing.
+     */
+    protected void handleErrorCeased(ModbusRegisterInfo register)
+    {
+        // log that the error ceased
+        this.logger.info("Register " + register.getAddress() + " on slave "
+                + register.getSlaveId() + " connected to gateway "
+                + register.getGatewayIdentifier() + " is now reachable.");
+    }
+
+    /**
+     * Handle the detection of a device being completely offline. Must be
+     * overridden by subclasses to provide specific handling of such events.
+     * Called only if the device connection status changes.
+     * 
+     * @param online
+     *            True if the device is online, false otherwise.
+     */
+    protected void handleConnectionStatus(boolean online)
+    {
+        // log that the error ceased
+        this.logger.info(
+                "Device " + this.device.getDeviceDescriptor().getDeviceURI()
+                        + " is " + (online ? "online." : "offline."));
+    }
+
+    /**
+     * Sets the online flag of the device handled by this driver.
+     * 
+     * @param online
+     *            True if the device is connected and can be read, false
+     *            otherwise.
+     */
+    protected void setDeviceOnline(boolean online)
+    {
+        if (this.device instanceof AbstractDevice)
+        {
+            AbstractDevice aDevice = ((AbstractDevice) this.device);
+            if (aDevice.isOnline() != online)
+            {
+                aDevice.setOnline(online);
+                this.handleConnectionStatus(online);
+            }
+        }
+    }
+
+    /**
+     * Fills a base {@link DeviceDiagnostics} object which can then be detailed
+     * by classes descending from {@link ModbusDriverInstance}.
+     * 
+     * @return The base {@link DeviceDiagnostics} instance filled with features
+     *         independent from the device type.
+     */
+    protected void buildBaseDiagnostics(DeviceDiagnostics<?> deviceDiagnostics)
+    {
+        deviceDiagnostics
+                .setDeviceId(this.device.getDeviceDescriptor().getDeviceURI());
+        deviceDiagnostics
+                .setDeviceClass(this.device.getClass().getSimpleName());
+        deviceDiagnostics.setDeviceDriver(this.getClass().getSimpleName());
+        deviceDiagnostics.setDeviceGateway(
+                this.device.getDeviceDescriptor().getGateway());
+        deviceDiagnostics.setOnline(((AbstractDevice) this.device).isOnline());
+        deviceDiagnostics.setProtocol(this.device.getDeviceDescriptor()
+                .getTechnology().toLowerCase());
     }
 
     // -------- PRIVATE METHODS ----------
@@ -477,8 +680,9 @@ public abstract class ModbusDriverInstance extends
                     if (registerInfo != null && !registerInfo.isEmpty())
                     {
 
-                        // fill the data point to notification map, 
-                        this.register2Notification.put(registerInfo, notificationInfo);
+                        // fill the data point to notification map,
+                        this.register2Notification.put(registerInfo,
+                                notificationInfo);
 
                         // add the register to the set of managed registers
                         this.managedRegisters.add(registerInfo);
@@ -639,25 +843,6 @@ public abstract class ModbusDriverInstance extends
 
         return (registerInfo != null && registerInfo.isValid()) ? registerInfo
                 : null;
-    }
-
-    /**
-     * Sets the online flag of the device handled by this driver.
-     * 
-     * @param online
-     *            True if the device is connected and can be read, false
-     *            otherwise.
-     */
-    private void setDeviceOnline(boolean online)
-    {
-        if (this.device instanceof AbstractDevice)
-        {
-            AbstractDevice aDevice = ((AbstractDevice) this.device);
-            if (aDevice.isOnline() != online)
-            {
-                aDevice.setOnline(online);
-            }
-        }
     }
 
     private Number getNumberOrDefault(String value,

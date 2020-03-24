@@ -99,6 +99,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     private Map<ModbusDriverInstance, Set<ModbusRegisterInfo>> driver2Register;
     // the modbus network-level-gateway-to-register association for polling
     private Map<String, Set<ModbusRegisterInfo>> gatewayAddress2Registers;
+    // the set of gateways currently registered on the network driver
+    private Map<String, ModbusDriverInstance> registeredGateways;
     // the baseline pollingTime adopted if no server-specific setting is given
     private int pollingTimeMillis;
     // the number of connection trials
@@ -199,6 +201,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         // create the gateway address to register map
         this.gatewayAddress2Registers = new ConcurrentHashMap<String, Set<ModbusRegisterInfo>>();
 
+        // create the registered gateways map
+        this.registeredGateways = new ConcurrentHashMap<String, ModbusDriverInstance>();
+
         // create the connection pool (one per gateway address)
         this.connectionPool = new ConcurrentHashMap<String, MasterConnection>();
 
@@ -237,6 +242,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 
         // delete the gateway address to register map
         this.gatewayAddress2Registers = null;
+
+        // delete the registered gateways map
+        this.registeredGateways = null;
 
         // close connections
         if (this.connectionPool != null)
@@ -761,6 +769,33 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     /*
      * (non-Javadoc)
      * 
+     * @see it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork#
+     * addGateway(it.polito.elite.dog.drivers.modbus.network.
+     * ModbusDriverInstance)
+     */
+    @Override
+    public void addGateway(ModbusDriverInstance gatewayDriver)
+    {
+        // store the gateway reference
+        this.registeredGateways.put(gatewayDriver.getGatewayIdentifier(),
+                gatewayDriver);
+    }
+
+    /**
+     * Provides the driver associated to the given gateway identifier
+     * 
+     * @param gwIdentifier
+     *            The gateway identifier.
+     * @return The driver as a {@link ModbusDriverInstance}.
+     */
+    public ModbusDriverInstance getGatewayDriver(String gwIdentifier)
+    {
+        return this.registeredGateways.get(gwIdentifier);
+    }
+
+    /*
+     * (non-Javadoc)
+     * 
      * @see it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork
      * #addDriver(it.polito.elite.dog.drivers.modbus.network.info.
      * ModbusRegisterInfo,
@@ -946,6 +981,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             }
         }
 
+        // remove only if the driver is a gateway driver and matches the one
+        // stored in the registered gateways map
+        this.registeredGateways.remove(driver.getGatewayIdentifier(), driver);
+
     }
 
     @Override
@@ -1085,6 +1124,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         connection.connect();
 
                         this.connectionPool.put(gwIdentifier, connection);
+
+                        // notify the gateway driver that connection was
+                        // successful
+                        this.notifyGatewayConnectionStatus(gwIdentifier, true);
                     }
 
                 }
@@ -1094,6 +1137,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     this.logger.error(
                             "Unable to connect to the Modbus TCP Slave with Address: "
                                     + gwAddress + "\nException: " + e);
+
+                    // notify the gateway driver that connection was NOT
+                    // successful
+                    this.notifyGatewayConnectionStatus(gwIdentifier, false);
 
                     if ((this.trialsDone < this.nConnectionTrials)
                             || (this.nConnectionTrials == 0))
@@ -1252,6 +1299,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             this.activeReconnectionTimers.put(gwIdentifier,
                     reconnectionTaskResult);
         }
+
+        // notify gateway disconnected
+        this.notifyGatewayConnectionStatus(gwIdentifier, false);
     }
 
     protected ModbusTransaction getTransaction(ModbusRequest request,
@@ -1309,5 +1359,17 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
 
         // return the created transaction
         return transaction;
+    }
+
+    private void notifyGatewayConnectionStatus(String gwIdentifier,
+            boolean connected)
+    {
+        // notify connection to the gateway
+        ModbusDriverInstance gatewayDriver = this
+                .getGatewayDriver(gwIdentifier);
+        if (gatewayDriver != null)
+        {
+            gatewayDriver.setReachable(null, connected, null);
+        }
     }
 }

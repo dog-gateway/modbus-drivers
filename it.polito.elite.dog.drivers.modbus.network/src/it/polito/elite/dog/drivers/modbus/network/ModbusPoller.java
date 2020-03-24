@@ -17,6 +17,7 @@
  */
 package it.polito.elite.dog.drivers.modbus.network;
 
+import it.polito.elite.dog.core.library.model.diagnostics.NetworkError;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
@@ -282,6 +283,7 @@ public class ModbusPoller extends Thread
         {
             // the read success flag
             boolean read = false;
+            NetworkError error = null;
 
             // get the address of the modbus gateway, which is supposed to be
             // the same for all registers...
@@ -330,6 +332,9 @@ public class ModbusPoller extends Thread
                     {
                         // set the read flag at false
                         read = false;
+                        // set the detected error at null
+                        error = null;
+
                         // get the current register
                         ModbusRegisterInfo register = regIterator.next();
 
@@ -415,7 +420,7 @@ public class ModbusPoller extends Thread
                                                 // set the device as
                                                 // reachable
                                                 driver.setReachable(register,
-                                                        true);
+                                                        true, error);
                                             }
                                         }
 
@@ -428,10 +433,12 @@ public class ModbusPoller extends Thread
                                     this.logger.warn(
                                             "Unable to translate modbus register value. Received value: {}",
                                             response.getHexMessage());
+                                    // set the error
+                                    error = NetworkError.VALUE_TRANSLATION;
                                 }
                             }
                         }
-                        catch (ModbusIOException e)
+                        catch (ModbusIOException mioe)
                         {
                             // error
                             this.logger.warn(
@@ -441,11 +448,20 @@ public class ModbusPoller extends Thread
                                             + register.getSlaveId()
                                             + " gateway "
                                             + register.getGatewayIdentifier()
-                                            + "\nException: " + e);
+                                            + "\nException: " + mioe);
 
+                            // set the error status
+                            if (mioe.isEOF())
+                            {
+                                error = NetworkError.EOF;
+                            }
+                            else
+                            {
+                                error = NetworkError.GENERIC_IO;
+                            }
                             // ignore the error and do not trigger reconnection.
                         }
-                        catch (ModbusSlaveException e)
+                        catch (ModbusSlaveException mse)
                         {
                             // debug
                             this.logger
@@ -455,7 +471,31 @@ public class ModbusPoller extends Thread
                                             + register.getSlaveId()
                                             + " gateway "
                                             + register.getGatewayIdentifier()
-                                            + "\nException: " + e);
+                                            + "\nException: " + mse);
+                            // set the error status
+                            switch (mse.getType())
+                            {
+                                case Modbus.ILLEGAL_FUNCTION_EXCEPTION:
+                                {
+                                    error = NetworkError.ILLEGAL_FUNCTION;
+                                    break;
+                                }
+                                case Modbus.ILLEGAL_ADDRESS_EXCEPTION:
+                                {
+                                    error = NetworkError.ILLEGAL_ADDRESS;
+                                    break;
+                                }
+                                case Modbus.ILLEGAL_VALUE_EXCEPTION:
+                                {
+                                    error = NetworkError.ILLEGAL_VALUE;
+                                    break;
+                                }
+                                default:
+                                {
+                                    error = NetworkError.GENERIC_IO;
+                                    break;
+                                }
+                            }
                             // ignore the error and do not trigger reconnection.
                             // close the connection
                             // modbusConnection.close();
@@ -472,6 +512,8 @@ public class ModbusPoller extends Thread
                                             + " gateway "
                                             + register.getGatewayIdentifier()
                                             + "\nException: " + e);
+                            // set the error status
+                            error = NetworkError.GENERIC_IO;
                             // close the connection
                             modbusConnection.close();
 
@@ -496,12 +538,12 @@ public class ModbusPoller extends Thread
                                 }
 
                                 // notify device unreachable
-                                this.notifyUnreachableRegister(register);
+                                this.notifyUnreachableRegister(register, error);
                             }
 
                         }
 
-                        // stop this polling cycle if the connection is closed
+                        // re-connect if the connection is closed
                         if (!modbusConnection.isConnected())
                         {
                             // info on port usage
@@ -533,7 +575,7 @@ public class ModbusPoller extends Thread
             }
             else
             {
-                this.logger.warn("The gateway {} is currently unreachable.",
+                this.logger.debug("The gateway {} is currently unreachable.",
                         gwIdentifier);
 
                 // notify devices unreachable
@@ -541,7 +583,8 @@ public class ModbusPoller extends Thread
                 Iterator<ModbusRegisterInfo> regIterator = registers.iterator();
                 while (regIterator.hasNext())
                 {
-                    this.notifyUnreachableRegister(regIterator.next());
+                    this.notifyUnreachableRegister(regIterator.next(),
+                            NetworkError.UNREACHABLE);
                 }
             }
         }
@@ -551,7 +594,8 @@ public class ModbusPoller extends Thread
 
     }
 
-    private void notifyUnreachableRegister(ModbusRegisterInfo register)
+    private void notifyUnreachableRegister(ModbusRegisterInfo register,
+            NetworkError error)
     {
         // get the set of drivers to notify
         Set<ModbusDriverInstance> drivers = this.driver.getRegister2Driver()
@@ -564,7 +608,7 @@ public class ModbusPoller extends Thread
             for (ModbusDriverInstance driver : drivers)
             {
                 // notify device unreachable
-                driver.setReachable(register, false);
+                driver.setReachable(register, false, error);
             }
         }
     }
