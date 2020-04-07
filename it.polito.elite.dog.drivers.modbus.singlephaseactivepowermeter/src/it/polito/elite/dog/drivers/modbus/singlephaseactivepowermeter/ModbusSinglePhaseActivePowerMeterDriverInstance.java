@@ -38,7 +38,6 @@ import org.osgi.service.log.Logger;
 import org.osgi.service.log.LoggerFactory;
 
 import java.lang.reflect.Method;
-import java.util.Set;
 
 import javax.measure.DecimalMeasure;
 import javax.measure.Measure;
@@ -154,49 +153,44 @@ public class ModbusSinglePhaseActivePowerMeterDriverInstance
         if (value != null && value instanceof DecimalMeasure)
         {
             // gets the corresponding notification set...
-            Set<CNParameters> notificationInfos = this.register2Notification
+            CNParameters notificationInfo = this.register2Notification
                     .get(register);
 
-            // handle the notifications
-            for (CNParameters notificationInfo : notificationInfos)
+            // black magic here...
+            String notificationName = notificationInfo.getName();
+
+            // get the hypothetical class method name
+            String notifyMethod = "notify"
+                    + Character.toUpperCase(notificationName.charAt(0))
+                    + notificationName.substring(1);
+
+            // search the method and execute it
+            try
             {
-                // black magic here...
-                String notificationName = notificationInfo.getName();
+                // log notification
+                this.logger.debug("Device: " + this.device.getDeviceId()
+                        + " is notifying " + notificationName + " value:"
+                        + value);
+                // get the method
 
-                // get the hypothetical class method name
-                String notifyMethod = "notify"
-                        + Character.toUpperCase(notificationName.charAt(0))
-                        + notificationName.substring(1);
+                Method notify = ModbusSinglePhaseActivePowerMeterDriverInstance.class
+                        .getDeclaredMethod(notifyMethod, Measure.class);
+                // invoke the method
+                notify.invoke(this, value);
 
-                // search the method and execute it
-                try
-                {
-                    // log notification
-                    this.logger.debug("Device: " + this.device.getDeviceId()
-                            + " is notifying " + notificationName + " value:"
-                            + value);
-                    // get the method
-
-                    Method notify = ModbusSinglePhaseActivePowerMeterDriverInstance.class
-                            .getDeclaredMethod(notifyMethod, Measure.class);
-                    // invoke the method
-                    notify.invoke(this, value);
-
-                }
-                catch (Exception e)
-                {
-                    // log the error
-                    this.logger.warn(
-                            "Unable to find a suitable notification method for the datapoint: "
-                                    + register + ":\n" + e);
-                    e.printStackTrace();
-                }
-
-                // notify the monitor admin
-                this.updateStatus();
             }
-        }
+            catch (Exception e)
+            {
+                // log the error
+                this.logger.warn(
+                        "Unable to find a suitable notification method for the datapoint: "
+                                + register + ":\n" + e);
+                e.printStackTrace();
+            }
 
+            // notify the monitor admin
+            this.updateStatus();
+        }
     }
 
     /*
@@ -235,18 +229,15 @@ public class ModbusSinglePhaseActivePowerMeterDriverInstance
         // configuration
         for (ModbusRegisterInfo register : this.register2Notification.keySet())
         {
-            Set<CNParameters> notificationInfos = this.register2Notification
+            CNParameters notificationInfo = this.register2Notification
                     .get(register);
 
-            for (CNParameters notificationInfo : notificationInfos)
+            if (notificationInfo.getName().equalsIgnoreCase(
+                    SinglePhaseActivePowerMeasurementNotification.notificationName))
             {
-
-                if (notificationInfo.getName().equalsIgnoreCase(
-                        SinglePhaseActivePowerMeasurementNotification.notificationName))
-                {
-                    activePowerUOM = register.getXlator().getUnitOfMeasure();
-                }
+                activePowerUOM = register.getXlator().getUnitOfMeasure();
             }
+
         }
 
         // create all the states

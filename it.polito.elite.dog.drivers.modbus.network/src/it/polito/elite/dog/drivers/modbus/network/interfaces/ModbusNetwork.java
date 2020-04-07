@@ -91,4 +91,9 @@ public interface ModbusNetwork
      * @param datapoint
      */
     public void removeDriver(ModbusDriverInstance driver);
+    
+    /**
+     * Adds a gateway for diagnostic purposes
+     */
+    public void addGateway(ModbusDriverInstance gatewayDriver);
 }
