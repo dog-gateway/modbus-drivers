@@ -357,15 +357,30 @@ public class BaseRegXlator
      */
     public void setUnitOfMeasure(String unitOfMeasure)
     {
-        // check the unit of measure
-        try
+        if (unitOfMeasure != null)
         {
-            // try to parse the unit of measure
-            Unit.valueOf(unitOfMeasure);
-            // if parsing ok, store the unit of measure
-            this.unitOfMeasure = unitOfMeasure;
+            // check the unit of measure
+            try
+            {
+                // try to parse the unit of measure
+                Unit.valueOf(unitOfMeasure);
+                // if parsing ok, store the unit of measure
+                this.unitOfMeasure = unitOfMeasure;
+            }
+            catch (IllegalArgumentException iae)
+            {
+                // set the unit of measure at ""
+                this.unitOfMeasure = "";
+                // log the fact that the unit is not supported
+                if (this.logger.isWarnEnabled())
+                {
+                    this.logger.warn(
+                            "Encountered unknown Unit Of Measure [{}], continuing with adimensional unit.",
+                            unitOfMeasure);
+                }
+            }
         }
-        catch (IllegalArgumentException iae)
+        else
         {
             // set the unit of measure at ""
             this.unitOfMeasure = "";
@@ -373,7 +388,7 @@ public class BaseRegXlator
             if (this.logger.isWarnEnabled())
             {
                 this.logger.warn(
-                        "Encountered unknown Unit Of Measure [{}], continuing with adimensional unit.",
+                        "Encountered unset Unit Of Measure continuing with adimensional unit.",
                         unitOfMeasure);
             }
         }
