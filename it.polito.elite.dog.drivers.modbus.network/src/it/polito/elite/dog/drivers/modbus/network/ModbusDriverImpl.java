@@ -83,6 +83,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     public static final int DEFAULT_RECONNECTION_INTERVAL_MILLIS = 3000;
     // the default blacklist duration (in polling cycles)
     public static final int DEFAULT_BLACKLIST_DURATION = 80;
+    // the default number of retries within a transaction
+    public static final int DEFAULT_RETRIES_WITHIN_TRANSACTION = 3;
+    // the default delay between retries within a transaction
+    public static final int DEFAULT_RETRY_DELAY_WITHIN_TRANSACTION_MILLIS = 5;
 
     // the bundle context
     private BundleContext bundleContext;
@@ -108,6 +112,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     private int trialsDone;
     // the time that must occur between two subsequent trials
     private int betweenTrialTimeMillis;
+    // the number of retries to perform within a modbus transaction
+    private int nRetriesWithinTransaction;
+    // the delay between subsequent retries within a transaction
+    private int delayBetweenRetryWithinTransactionMillis;
 
     // handle multiple reconnection attempts
     private ScheduledExecutorService reconnectionService;
@@ -143,6 +151,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         this.betweenTrialTimeMillis = ModbusDriverImpl.DEFAULT_RECONNECTION_INTERVAL_MILLIS;
         // number of cycles that a broken register will be in the blacklist
         this.maxBlacklistPollingCycles = ModbusDriverImpl.DEFAULT_BLACKLIST_DURATION;
+        // the number of retries to perform within a modbus transaction
+        this.nRetriesWithinTransaction = ModbusDriverImpl.DEFAULT_RETRIES_WITHIN_TRANSACTION;
+        // the delay between subsequent retries within a transaction
+        this.delayBetweenRetryWithinTransactionMillis = ModbusDriverImpl.DEFAULT_RETRY_DELAY_WITHIN_TRANSACTION_MILLIS;
     }
 
     /**
@@ -329,6 +341,40 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 // parse the string
                 this.maxBlacklistPollingCycles = Integer
                         .valueOf(maxBlacklistPollingCyclesAsString);
+            }
+
+            // try to get the number of retries that should be performed within
+            // a transaction
+            String numRetryWithinTransactionString = (String) properties
+                    .get(ModbusNetworkConstants.N_RETRIES_PER_TRANSACTION);
+
+            // check not null
+            if (numRetryWithinTransactionString != null)
+            {
+                // trim leading and trailing spaces
+                numRetryWithinTransactionString = numRetryWithinTransactionString
+                        .trim();
+
+                // parse the string
+                this.nRetriesWithinTransaction = Integer
+                        .valueOf(numRetryWithinTransactionString);
+            }
+
+            // try to get the number of retries that should be performed within
+            // a transaction
+            String retryDelayWithinTransactionString = (String) properties
+                    .get(ModbusNetworkConstants.RETRY_DELAY_WITHIN_TRANSACTION);
+
+            // check not null
+            if (retryDelayWithinTransactionString != null)
+            {
+                // trim leading and trailing spaces
+                retryDelayWithinTransactionString = retryDelayWithinTransactionString
+                        .trim();
+
+                // parse the string
+                this.delayBetweenRetryWithinTransactionMillis = Integer
+                        .valueOf(retryDelayWithinTransactionString);
             }
 
             this.register();
@@ -1315,11 +1361,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             {
                 // create a modbus tcp transaction for the given request
                 transaction = new ModbusTCPTransaction(request);
-
                 // attach the transaction to the given connection
                 ((ModbusTCPTransaction) transaction)
                         .setConnection((TCPMasterConnection) connection);
-
                 break;
             }
             case RTU:
@@ -1330,7 +1374,6 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 // attach the transaction to the given connection
                 ((ModbusSerialTransaction) transaction).setSerialConnection(
                         ((SerialMasterConnection) connection).getConnection());
-
                 break;
             }
             case RTU_TCP:
@@ -1342,7 +1385,6 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 // attach the transaction to the given connection
                 ((ModbusRTUTCPTransaction) transaction)
                         .setConnection((RTUTCPMasterConnection) connection);
-
                 break;
             }
             case RTU_UDP:
@@ -1355,6 +1397,16 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 // attach the transaction to the given connection
                 ((ModbusUDPTransaction) transaction).setRequest(request);
             }
+        }
+
+        // tune transaction parameters
+        if (transaction != null)
+        {
+            // set transaction retries
+            transaction.setRetries(this.nRetriesWithinTransaction);
+            // set transaction delay
+            transaction.setTransDelayMS(
+                    this.delayBetweenRetryWithinTransactionMillis);
         }
 
         // return the created transaction
