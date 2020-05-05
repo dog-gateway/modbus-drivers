@@ -376,65 +376,90 @@ public class ModbusPoller extends Thread
                             // get the readResponse
                             ModbusResponse response = transaction.getResponse();
 
-                            // response might be null if the transaction fails
+                            // response might be null if the transaction
+                            // fails
                             if (response != null)
                             {
-
-                                // handle possible number format exceptions
-                                // generated on translation of register values
-                                // possible errors might still occur for not
-                                // numeric values
-                                try
+                                // -- check the transaction id --
+                                int responseTransactionId = response
+                                        .getTransactionID();
+                                // if the response transaction id is the
+                                // default, then the transport might not support
+                                // transaction IDs (available on modbus TCP
+                                // only).
+                                if (responseTransactionId != Modbus.DEFAULT_TRANSACTION_ID
+                                        && responseTransactionId != transaction
+                                                .getTransactionID())
                                 {
-                                    // debug
-                                    String responseAsString = response
-                                            .getHexMessage();
-                                    this.logger.debug(
-                                            "Received -> " + responseAsString);
-
-                                    // get the response value
-                                    Object value = register.getXlator()
-                                            .getValue(response);
-
-                                    this.logger.debug(
-                                            "Translated into -> " + value);
-
-                                    // check not null
-                                    if (value != null)
-                                    {
-
-                                        // dispatch the new message...
-                                        // TODO: check if this shall be done
-                                        // asynchronously
-                                        Set<ModbusDriverInstance> drivers = this.driver
-                                                .getRegister2Driver()
-                                                .get(register);
-
-                                        if (drivers != null)
-                                        {
-                                            for (ModbusDriverInstance driver : drivers)
-                                            {
-                                                // notify the value
-                                                driver.newMessageFromHouse(
-                                                        register, value);
-                                                // set the device as
-                                                // reachable
-                                                driver.setReachable(register,
-                                                        true, error);
-                                            }
-                                        }
-
-                                        // successful read operation!
-                                        read = true;
-                                    }
+                                    this.logger.error(
+                                            "Received response with wrong transaction ID, ignoring it.");
+                                    // cause a generic IO error
+                                    // TODO: add new NetworkError for this.
+                                    throw new ModbusIOException();
                                 }
-                                catch (NumberFormatException nfe)
+                                else
                                 {
-                                    this.logger.warn(
-                                            "Unable to translate modbus register value. Received value: {}",
-                                            response.getHexMessage());
-                                    // set the error
-                                    error = NetworkError.VALUE_TRANSLATION;
+                                    this.logger.debug("Transaction Id: "
+                                            + responseTransactionId
+                                            + " - sent: "
+                                            + transaction.getTransactionID());
+                                    // handle possible number format exceptions
+                                    // generated on translation of register
+                                    // values. Errors might still occur for non-
+                                    // numeric values
+                                    try
+                                    {
+                                        // debug
+                                        String responseAsString = response
+                                                .getHexMessage();
+                                        this.logger.debug("Received -> "
+                                                + responseAsString);
+
+                                        // get the response value
+                                        Object value = register.getXlator()
+                                                .getValue(response);
+
+                                        this.logger.debug(
+                                                "Translated into -> " + value);
+
+                                        // check not null
+                                        if (value != null)
+                                        {
+
+                                            // dispatch the new message...
+                                            // TODO: check if this shall be done
+                                            // asynchronously
+                                            Set<ModbusDriverInstance> drivers = this.driver
+                                                    .getRegister2Driver()
+                                                    .get(register);
+
+                                            if (drivers != null)
+                                            {
+                                                for (ModbusDriverInstance driver : drivers)
+                                                {
+                                                    // notify the value
+                                                    driver.newMessageFromHouse(
+                                                            register, value);
+                                                    // set the device as
+                                                    // reachable
+                                                    driver.setReachable(
+                                                            register, true,
+                                                            error);
+                                                }
+                                            }
+
+                                            // successful read operation!
+                                            read = true;
+                                        }
+                                    }
+                                    catch (NumberFormatException nfe)
+                                    {
+                                        this.logger.warn(
+                                                "Unable to translate modbus register value. Received value: {}",
+                                                response.getHexMessage());
+                                        // set the error
+                                        error = NetworkError.VALUE_TRANSLATION;
+                                    }
                                 }
                             }
                         }

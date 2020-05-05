@@ -32,5 +32,9 @@ public class ModbusNetworkConstants
     public static final String N_RETRIES = "nRetries";
     // The number of polling cycles for which a failing register is blacklisted
     public static final String BLACKLIST_CYCLE = "blacklistCycle";
+    // The number of retries per transaction
+    public static final String N_RETRIES_PER_TRANSACTION = "nRetriesWithinTransaction";
+    // The delay between retries within a single transaction
+    public static final String RETRY_DELAY_WITHIN_TRANSACTION = "retryDelayWithinTransactionMillis";
     
 }
