@@ -883,7 +883,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         // create the set if not yet existing
         if (drivers == null)
         {
-            drivers = new HashSet<ModbusDriverInstance>();
+            drivers = Collections.newSetFromMap(
+                    new ConcurrentHashMap<ModbusDriverInstance, Boolean>());
             this.register2Driver.put(register, drivers);
         }
         // add the driver
@@ -895,7 +896,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         if (driverRegisters == null)
         {
             // create the new set of registers associated to the given driver
-            driverRegisters = new HashSet<ModbusRegisterInfo>();
+            driverRegisters = Collections.newSetFromMap(
+                    new ConcurrentHashMap<ModbusRegisterInfo, Boolean>());
             this.driver2Register.put(driver, driverRegisters);
         }
         driverRegisters.add(register);
