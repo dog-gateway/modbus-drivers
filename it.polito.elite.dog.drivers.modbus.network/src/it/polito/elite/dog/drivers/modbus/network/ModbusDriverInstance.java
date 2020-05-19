@@ -419,15 +419,26 @@ public abstract class ModbusDriverInstance extends
     {
         if (!reachable)
         {
-            // store the failed registers
-            NetworkError previousError = this.failedRegisters.put(dataPointInfo,
-                    error);
-
-            // if the previous error was null, than a new error occurred and
-            // should be notified
-            if (previousError == null)
+            // to handle the error both the datapointInfo and the error should
+            // be not null
+            if (error != null && dataPointInfo != null)
             {
-                this.handleNewError(dataPointInfo, error);
+                // store the failed registers
+                NetworkError previousError = this.failedRegisters
+                        .put(dataPointInfo, error);
+
+                // if the previous error was null, than a new error occurred and
+                // should be notified
+                if (previousError == null)
+                {
+                    this.handleNewError(dataPointInfo, error);
+                }
+            }
+            else
+            {
+                this.logger.warn(
+                        "Received reachability status without info or error: info:"
+                                + dataPointInfo + " error: " + error);
             }
 
             // check whether the number of registers is equal to the number of
