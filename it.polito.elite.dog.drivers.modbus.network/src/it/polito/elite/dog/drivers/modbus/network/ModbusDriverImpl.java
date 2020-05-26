@@ -677,7 +677,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     }
 
     @Override
-    public boolean writeBit(ModbusRegisterInfo register, Object commandValue,
+    public boolean write(ModbusRegisterInfo register, Object commandValue,
             Object registerValue)
     {
         return this.writeValue(register, commandValue, registerValue);

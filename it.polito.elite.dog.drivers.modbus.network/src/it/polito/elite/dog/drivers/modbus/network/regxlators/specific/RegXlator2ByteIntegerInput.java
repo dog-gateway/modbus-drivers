@@ -34,7 +34,7 @@ public class RegXlator2ByteIntegerInput extends BaseRegXlator
     public RegXlator2ByteIntegerInput()
     {
         super(DataSizeEnum.INT16, RegisterTypeEnum.INPUT_REGISTER,
-                OrderEnum.BIG_ENDIAN, null, null, 0);
+                OrderEnum.BIG_ENDIAN, null, null, 0, null);
     }
 
 }

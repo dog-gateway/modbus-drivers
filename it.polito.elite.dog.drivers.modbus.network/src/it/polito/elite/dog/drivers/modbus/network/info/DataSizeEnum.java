@@ -21,6 +21,8 @@ package it.polito.elite.dog.drivers.modbus.network.info;
  */
 public enum DataSizeEnum
 {
+    INT8("int8", 16), UINT8("uint8", 16),
+
     BIT("bit", 16),
 
     INT16("int16", 16), UINT16("uint16", 16),
@@ -69,14 +71,15 @@ public enum DataSizeEnum
     {
         return this.nRegisters;
     }
-    
+
     /**
      * Provides the length of the register in bytes.
+     * 
      * @return The length of the register in bytes.
      */
     public int getNBytes()
     {
-        return this.nRegisters*2;
+        return this.nRegisters * 2;
     }
 
     /**

@@ -36,7 +36,7 @@ public class RegXlator4ByteFloatHoldingBE extends BaseRegXlator
     public RegXlator4ByteFloatHoldingBE()
     {
         super(DataSizeEnum.FLOAT32, RegisterTypeEnum.HOLDING_REGISTER,
-                OrderEnum.BIG_ENDIAN, OrderEnum.BIG_ENDIAN, null, 0);
+                OrderEnum.BIG_ENDIAN, OrderEnum.BIG_ENDIAN, null, 0, null);
     }
 
 }

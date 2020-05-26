@@ -35,6 +35,6 @@ public class RegXlator4ByteFloatInputBE extends BaseRegXlator
     public RegXlator4ByteFloatInputBE()
     {
         super(DataSizeEnum.FLOAT32, RegisterTypeEnum.INPUT_REGISTER,
-                OrderEnum.BIG_ENDIAN, OrderEnum.BIG_ENDIAN, null, 0);
+                OrderEnum.BIG_ENDIAN, OrderEnum.BIG_ENDIAN, null, 0, null);
     }
 }

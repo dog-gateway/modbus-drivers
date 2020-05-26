@@ -17,6 +17,7 @@ import javax.measure.unit.Unit;
 
 import org.osgi.service.log.Logger;
 
+import it.polito.elite.dog.drivers.modbus.network.info.BytePositionEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.OrderEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
@@ -57,6 +58,8 @@ public class BaseRegXlator
     protected OrderEnum doubleWordOrder;
     // the bit to extract (valid only for bit registers)
     protected int bit = -1; // default
+    // the byte to extract (valid only for int8/uint8)
+    protected BytePositionEnum bytePosition;
 
     /**
      * The scale factor with which the actual modbus register value shall be
@@ -115,7 +118,8 @@ public class BaseRegXlator
      */
     public BaseRegXlator(DataSizeEnum registerSize,
             RegisterTypeEnum registerType, OrderEnum byteOrder,
-            OrderEnum wordOrder, OrderEnum doubleWordOrder, int bit)
+            OrderEnum wordOrder, OrderEnum doubleWordOrder, int bit,
+            BytePositionEnum bytePosition)
     {
         super();
         this.registerSize = registerSize;
@@ -124,6 +128,7 @@ public class BaseRegXlator
         this.wordOrder = wordOrder;
         this.doubleWordOrder = doubleWordOrder;
         this.bit = bit;
+        this.bytePosition = bytePosition;
     }
 
     /**
@@ -442,6 +447,8 @@ public class BaseRegXlator
                 + ((unitOfMeasure == null) ? 0 : unitOfMeasure.hashCode());
         result = prime * result
                 + ((wordOrder == null) ? 0 : wordOrder.hashCode());
+        result = prime * result
+                + ((bytePosition == null) ? 0 : bytePosition.hashCode());
         return result;
     }
 
@@ -461,6 +468,8 @@ public class BaseRegXlator
             return false;
         BaseRegXlator other = (BaseRegXlator) obj;
         if (bit != other.bit)
+            return false;
+        if (bytePosition != other.bytePosition)
             return false;
         if (byteOrder != other.byteOrder)
             return false;
@@ -493,7 +502,7 @@ public class BaseRegXlator
         // create a basic clone
         BaseRegXlator clone = new BaseRegXlator(this.registerSize,
                 this.registerType, this.byteOrder, this.wordOrder,
-                this.doubleWordOrder, this.bit);
+                this.doubleWordOrder, this.bit, this.bytePosition);
         // clone the scale factor
         clone.scaleFactor = this.scaleFactor;
         // scale the unit of measure
@@ -637,6 +646,41 @@ public class BaseRegXlator
                 // convert the register value
                 switch (this.registerSize)
                 {
+                    case UINT8:
+                    {
+                        if (this.bytePosition != null)
+                        {
+                            byte resultByte = registerBytesValue.get(
+                                    this.bytePosition == BytePositionEnum.LOW
+                                            ? 1
+                                            : 0);
+
+                            result = (int) resultByte & 0x00ff;
+
+                            break;
+                        }
+                        else
+                        {
+                            this.logger.warn(
+                                    "Unable to convert UINT8: missing byte position");
+                        }
+                    }
+                    case INT8:
+                    {
+                        if (this.bytePosition != null)
+                        {
+                            result = registerBytesValue.get(
+                                    this.bytePosition == BytePositionEnum.LOW
+                                            ? 1
+                                            : 0);
+                        }
+                        else
+                        {
+                            this.logger.warn(
+                                    "Unable to convert INT8: missing byte position");
+                        }
+                        break;
+                    }
                     case UINT16:
                     {
                         result = ((int) registerBytesValue.getShort()) & 0xffff;
@@ -728,21 +772,26 @@ public class BaseRegXlator
                     }
                     case BIT:
                     {
-                        // BIT is interpreted as the index of the bit starting
-                        // from
-                        // the least significant bit
-                        // order LSB -> MSB
-                        // get the right byte
-                        int byteIndex = ((registerBytes.length * 8 - 1)
-                                - this.bit) / 8;
-
-                        // protection against out-of-bound exceptions...
-                        if (byteIndex >= 0 && byteIndex < registerBytes.length)
+                        if (this.bit != -1)
                         {
-                            byte byteToMask = registerBytes[byteIndex];
+                            // BIT is interpreted as the index of the bit
+                            // starting
+                            // from
+                            // the least significant bit
+                            // order LSB -> MSB
+                            // get the right byte
+                            int byteIndex = ((registerBytes.length * 8 - 1)
+                                    - this.bit) / 8;
 
-                            // extract the bit of interest
-                            result = (0x01 << (this.bit % 8)) & byteToMask;
+                            // protection against out-of-bound exceptions...
+                            if (byteIndex >= 0
+                                    && byteIndex < registerBytes.length)
+                            {
+                                byte byteToMask = registerBytes[byteIndex];
+
+                                // extract the bit of interest
+                                result = (0x01 << (this.bit % 8)) & byteToMask;
+                            }
                         }
                     }
                 }
@@ -816,7 +865,8 @@ public class BaseRegXlator
         {
             case BIT:
             {
-                if (value instanceof Boolean && oldValue instanceof Integer)
+                if (value instanceof Boolean && oldValue instanceof Integer
+                        && this.bit != -1)
                 {
                     // mask value an only change the bit-th bit
 
@@ -865,6 +915,85 @@ public class BaseRegXlator
                     }
                     // store the value
                     buffer.putDouble(dValue);
+                }
+                break;
+            }
+            case INT8:
+            {
+                if (value instanceof Number && oldValue instanceof Integer
+                        && this.bytePosition != null)
+                {
+                    // get the value
+                    double sValue = ((Number) value).doubleValue();
+
+                    // scale the value if a scale factor is provided
+                    if (this.scaleFactor != 0)
+                    {
+                        sValue = Math.round(sValue / this.scaleFactor);
+                    }
+
+                    // check the value
+                    if (sValue >= -128 && sValue < 128)
+                    {
+                        // store the value
+                        if (this.bytePosition == BytePositionEnum.LOW)
+                        {
+                            buffer.put(new byte[] {
+                                    (byte) (((Integer) oldValue & 0xff00) >> 8),
+                                    (byte) sValue });
+                        }
+                        else
+                        {
+                            buffer.put(new byte[] { (byte) sValue,
+                                    (byte) (((Integer) oldValue & 0x00ff)) });
+                        }
+                    }
+                    else
+                    {
+                        this.logger.warn("After applying the scalng factor ("
+                                + this.scaleFactor
+                                + ") the value is not a valid INT8: " + sValue);
+                    }
+                }
+                break;
+            }
+            case UINT8:
+            {
+                if (value instanceof Number && oldValue instanceof Integer
+                        && this.bytePosition != null)
+                {
+                    // get the value
+                    double sValue = ((Number) value).doubleValue();
+
+                    // scale the value if a scale factor is provided
+                    if (this.scaleFactor != 0)
+                    {
+                        sValue = Math.round(sValue / this.scaleFactor);
+                    }
+
+                    // check the value
+                    if (sValue >= 0 && sValue < 256)
+                    {
+                        // store the value
+                        if (this.bytePosition == BytePositionEnum.LOW)
+                        {
+                            buffer.put(new byte[] {
+                                    (byte) (((Integer) oldValue & 0xff00) >> 8),
+                                    (byte) sValue });
+                        }
+                        else
+                        {
+                            buffer.put(new byte[] { (byte) sValue,
+                                    (byte) (((Integer) oldValue & 0x00ff)) });
+                        }
+                    }
+                    else
+                    {
+                        this.logger.warn("After applying the scalng factor ("
+                                + this.scaleFactor
+                                + ") the value is not a valid UINT8: "
+                                + sValue);
+                    }
                 }
                 break;
             }
@@ -951,6 +1080,7 @@ public class BaseRegXlator
 
         // translate big endian bytes in registers
         return this.composeRegisters(registerBytes);
+
     }
 
     /**

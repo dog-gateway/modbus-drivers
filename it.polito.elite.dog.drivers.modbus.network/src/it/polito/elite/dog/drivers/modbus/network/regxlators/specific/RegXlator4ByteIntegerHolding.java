@@ -32,6 +32,6 @@ public class RegXlator4ByteIntegerHolding extends BaseRegXlator
     public RegXlator4ByteIntegerHolding()
     {
         super(DataSizeEnum.INT32, RegisterTypeEnum.HOLDING_REGISTER,
-                OrderEnum.BIG_ENDIAN, OrderEnum.LITTLE_ENDIAN, null, 0);
+                OrderEnum.BIG_ENDIAN, OrderEnum.LITTLE_ENDIAN, null, 0, null);
     }
 }
