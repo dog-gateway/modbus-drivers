@@ -367,6 +367,9 @@ public class ModbusPoller extends Thread
                                 .getTransaction(readRequest, modbusConnection,
                                         variant);
 
+                        // get the initial transaction id
+                        int firstTransactionId = transaction.getTransactionID();
+
                         // try to execute the transaction and manage possible
                         // errors...
                         try
@@ -388,11 +391,16 @@ public class ModbusPoller extends Thread
                                 // transaction IDs (available on modbus TCP
                                 // only).
                                 if (responseTransactionId != Modbus.DEFAULT_TRANSACTION_ID
-                                        && responseTransactionId != transaction
-                                                .getTransactionID())
+                                        && (responseTransactionId < firstTransactionId
+                                                || responseTransactionId > transaction
+                                                        .getTransactionID()))
                                 {
                                     this.logger.error(
-                                            "Received response with wrong transaction ID, ignoring it.");
+                                            "Received response with wrong transaction ID, ignoring it. Expected: "
+                                                    + transaction
+                                                            .getTransactionID()
+                                                    + " Received: "
+                                                    + responseTransactionId);
                                     // cause a generic IO error
                                     // TODO: add new NetworkError for this.
                                     throw new ModbusIOException();
