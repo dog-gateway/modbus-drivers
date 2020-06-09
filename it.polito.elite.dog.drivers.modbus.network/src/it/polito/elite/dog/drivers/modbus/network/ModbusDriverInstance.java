@@ -25,6 +25,7 @@ import it.polito.elite.dog.core.library.model.StatefulDevice;
 import it.polito.elite.dog.core.library.model.diagnostics.DeviceDiagnostics;
 import it.polito.elite.dog.core.library.model.diagnostics.NetworkError;
 import it.polito.elite.dog.core.library.util.ElementDescription;
+import it.polito.elite.dog.drivers.modbus.network.info.BytePositionEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.DataSizeEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
@@ -826,9 +827,14 @@ public abstract class ModbusDriverInstance extends
                         params.get(ModbusInfo.BIT), Integer.class,
                         ModbusInfo.DEFAULT_BIT);
 
+                BytePositionEnum bytePosition = this
+                        .getBytePositionEnumOrDefault(
+                                params.get(ModbusInfo.BYTE_POSITION), null);
+
                 // build a BaseXlator
                 BaseRegXlator baseXlator = new BaseRegXlator(dataSize,
-                        regTypeNew, byteOrder, wordOrder, doubleWordOrder, bit);
+                        regTypeNew, byteOrder, wordOrder, doubleWordOrder, bit,
+                        bytePosition);
 
                 // set the register info xlator
                 registerInfo.setXlator(baseXlator);
@@ -905,6 +911,25 @@ public abstract class ModbusDriverInstance extends
         if (value != null && !value.isEmpty())
         {
             DataSizeEnum candidateValue = DataSizeEnum.fromValue(value.trim());
+
+            if (candidateValue != null)
+            {
+                actualValue = candidateValue;
+            }
+        }
+
+        return actualValue;
+    }
+
+    private BytePositionEnum getBytePositionEnumOrDefault(String value,
+            BytePositionEnum defaultValue)
+    {
+        BytePositionEnum actualValue = defaultValue;
+
+        if (value != null && !value.isEmpty())
+        {
+            BytePositionEnum candidateValue = BytePositionEnum
+                    .fromValue(value.trim());
 
             if (candidateValue != null)
             {

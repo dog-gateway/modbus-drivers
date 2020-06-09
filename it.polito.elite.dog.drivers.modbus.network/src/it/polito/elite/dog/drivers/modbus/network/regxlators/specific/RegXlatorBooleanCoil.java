@@ -35,7 +35,8 @@ public class RegXlatorBooleanCoil extends BaseRegXlator
      */
     public RegXlatorBooleanCoil()
     {
-        super(DataSizeEnum.BIT, RegisterTypeEnum.COIL, null, null, null, 0);
+        super(DataSizeEnum.BIT, RegisterTypeEnum.COIL, null, null, null, 0,
+                null);
         // this.typeSize = 0;
     }
 }

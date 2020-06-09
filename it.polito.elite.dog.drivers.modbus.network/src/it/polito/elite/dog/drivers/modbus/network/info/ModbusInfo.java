@@ -66,6 +66,8 @@ public class ModbusInfo extends ConfigurationConstants
     public static final String DOUBLE_WORD_ORDER = "doubleWordOrder";
     // the bit position for BIT-type register
     public static final String BIT = "bit";
+    // the byte position for INT8/UINT8 registers
+    public static final String BYTE_POSITION = "byte";
     // the slave identifier for the register
     public static final String SLAVE_ID = "slaveId";
     // the scale factor

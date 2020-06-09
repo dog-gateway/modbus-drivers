@@ -59,7 +59,7 @@ public interface ModbusNetwork
      * 
      * @return true if the command was successfully written, false otherwise.
      */
-    public boolean writeBit(ModbusRegisterInfo register, Object commandValue,
+    public boolean write(ModbusRegisterInfo register, Object commandValue,
             Object currentRegisterValue);
 
     /**

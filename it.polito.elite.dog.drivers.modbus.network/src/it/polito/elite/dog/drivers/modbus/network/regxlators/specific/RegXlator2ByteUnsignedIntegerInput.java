@@ -33,7 +33,7 @@ public class RegXlator2ByteUnsignedIntegerInput extends BaseRegXlator
     public RegXlator2ByteUnsignedIntegerInput()
     {
         super(DataSizeEnum.UINT16, RegisterTypeEnum.INPUT_REGISTER,
-                OrderEnum.BIG_ENDIAN, null, null, 0);
+                OrderEnum.BIG_ENDIAN, null, null, 0, null);
     }
 
 }
