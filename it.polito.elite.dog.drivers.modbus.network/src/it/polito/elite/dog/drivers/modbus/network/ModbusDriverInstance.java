@@ -48,7 +48,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -90,9 +89,6 @@ public abstract class ModbusDriverInstance extends
     protected long gatewayRequestTimeout;
     // the gateway-level requestGap
     protected long gatewayRequestGap;
-
-    // the datapoints managed by this driver
-    protected Set<ModbusRegisterInfo> managedRegisters;
 
     // the set of currently failed registers associated wth the last error code.
     protected Map<ModbusRegisterInfo, NetworkError> failedRegisters;
@@ -148,9 +144,6 @@ public abstract class ModbusDriverInstance extends
 
         // create the map to associate commands and data points
         this.command2Register = new ConcurrentHashMap<CNParameters, ModbusRegisterInfo>();
-
-        // create the set for storing the managed data points
-        this.managedRegisters = new HashSet<ModbusRegisterInfo>();
 
         // create the table of currently failed registers
         this.failedRegisters = new ConcurrentHashMap<ModbusRegisterInfo, NetworkError>();
@@ -220,9 +213,9 @@ public abstract class ModbusDriverInstance extends
 
             // perform operations needed to add the device to the network driver
             // associate the device-specific driver to the network driver
-            if (this.managedRegisters != null)
+            if (this.register2Notification.keySet() != null)
             {
-                for (ModbusRegisterInfo register : this.managedRegisters)
+                for (ModbusRegisterInfo register : this.register2Notification.keySet())
                     this.addToNetworkDriver(register);
             }
 
@@ -261,7 +254,7 @@ public abstract class ModbusDriverInstance extends
     public void getInitialState()
     {
         // for each datapoint registered with this driver, call the read command
-        for (ModbusRegisterInfo register : this.managedRegisters)
+        for (ModbusRegisterInfo register : this.register2Notification.keySet())
             this.network.read(register, this);
     }
 
@@ -444,7 +437,7 @@ public abstract class ModbusDriverInstance extends
 
             // check whether the number of registers is equal to the number of
             // managed registers, in such a case set the device as offline.
-            if (this.managedRegisters.size() == this.failedRegisters.size())
+            if (this.register2Notification.keySet().size() == this.failedRegisters.size())
             {
                 this.setDeviceOnline(false);
             }
@@ -463,7 +456,7 @@ public abstract class ModbusDriverInstance extends
             }
 
             // set the device as online
-            if (this.managedRegisters.size() > this.failedRegisters.size())
+            if (this.register2Notification.keySet().size() > this.failedRegisters.size())
             {
                 this.setDeviceOnline(true);
             }
@@ -621,9 +614,6 @@ public abstract class ModbusDriverInstance extends
                     {
                         // add the command to data point entry
                         this.command2Register.put(commandInfo, registerInfo);
-
-                        // add the datapoint to the set of managed datapoints
-                        this.managedRegisters.add(registerInfo);
                     }
                 }
                 catch (UnknownHostException uhe)
@@ -695,9 +685,6 @@ public abstract class ModbusDriverInstance extends
                         // fill the data point to notification map,
                         this.register2Notification.put(registerInfo,
                                 notificationInfo);
-
-                        // add the register to the set of managed registers
-                        this.managedRegisters.add(registerInfo);
                     }
                 }
 
