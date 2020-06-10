@@ -33,6 +33,7 @@ import net.wimpi.modbus.msg.ReadMultipleRegistersRequest;
 import net.wimpi.modbus.msg.ReadMultipleRegistersResponse;
 import net.wimpi.modbus.msg.WriteCoilRequest;
 import net.wimpi.modbus.msg.WriteMultipleRegistersRequest;
+import net.wimpi.modbus.msg.WriteSingleRegisterRequest;
 import net.wimpi.modbus.procimg.InputRegister;
 import net.wimpi.modbus.procimg.Register;
 import net.wimpi.modbus.procimg.SimpleRegister;
@@ -260,8 +261,16 @@ public class BaseRegXlator
                 Register[] registers = this.toRegisters(value, oldValue);
                 if (registers != null)
                 {
-                    request = new WriteMultipleRegistersRequest(address,
-                            registers);
+                    if (this.getRegisterSize().getNRegisters() != 1)
+                    {
+                        request = new WriteMultipleRegistersRequest(address,
+                                registers);
+                    }
+                    else
+                    {
+                        request = new WriteSingleRegisterRequest(address,
+                                registers[0]);
+                    }
                 }
                 break;
             }
