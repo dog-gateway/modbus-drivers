@@ -758,6 +758,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     writeRequest.setUnitID(register.getSlaveId());
                     writeRequest.setTransactionID(1);
 
+                    // debug
+                    this.logger.debug("Sent: " + writeRequest.getHexMessage());
+
                     // create a modbus tcp transaction for the just created
                     // writeRequest
                     ModbusTransaction transaction = this.getTransaction(
@@ -768,6 +771,19 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     try
                     {
                         transaction.execute();
+
+                        // debug
+                        if (this.logger.isDebugEnabled())
+                        {
+                            ModbusResponse response = transaction.getResponse();
+                            if (response != null)
+                            {
+                                String responseAsString = response
+                                        .getHexMessage();
+                                this.logger.debug(
+                                        "Received -> " + responseAsString);
+                            }
+                        }
                         written = true;
                     }
                     catch (ModbusIOException e)

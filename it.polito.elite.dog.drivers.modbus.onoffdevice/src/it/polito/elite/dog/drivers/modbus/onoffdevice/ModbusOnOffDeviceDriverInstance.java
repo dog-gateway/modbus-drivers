@@ -106,13 +106,13 @@ public class ModbusOnOffDeviceDriverInstance extends ModbusDriverInstance
     @Override
     public void on()
     {
-        this.network.write(this.managedRegisters.iterator().next(), "true");
+        this.network.write(this.register2Notification.keySet().iterator().next(), "true");
     }
 
     @Override
     public void off()
     {
-        this.network.write(this.managedRegisters.iterator().next(), "false");
+        this.network.write(this.register2Notification.keySet().iterator().next(), "false");
     }
 
     @Override
