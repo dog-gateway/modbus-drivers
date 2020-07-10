@@ -36,5 +36,7 @@ public class ModbusNetworkConstants
     public static final String N_RETRIES_PER_TRANSACTION = "nRetriesWithinTransaction";
     // The delay between retries within a single transaction
     public static final String RETRY_DELAY_WITHIN_TRANSACTION = "retryDelayWithinTransactionMillis";
+    // the transaction check enable
+    public static final String ENABLE_TRANSACTION_CHECK = "enableTransactionCheck";
     
 }
