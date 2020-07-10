@@ -402,7 +402,7 @@ public class ModbusPoller extends Thread
                                 if (responseTransactionId != Modbus.DEFAULT_TRANSACTION_ID
                                         && (responseTransactionId < firstTransactionId
                                                 || responseTransactionId > transaction
-                                                        .getTransactionID()))
+                                                        .getTransactionID()) && this.driver.isTransactionCheckEnabled())
                                 {
                                     this.logger.error(
                                             "Received response with wrong transaction ID, ignoring it. Expected: "

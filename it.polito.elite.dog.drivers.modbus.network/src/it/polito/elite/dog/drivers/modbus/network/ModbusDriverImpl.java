@@ -87,6 +87,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     public static final int DEFAULT_RETRIES_WITHIN_TRANSACTION = 3;
     // the default delay between retries within a transaction
     public static final int DEFAULT_RETRY_DELAY_WITHIN_TRANSACTION_MILLIS = 5;
+    // the default for transaction check flag
+    public static final boolean DEFAULT_TRANSACTION_CHECK_ENABLED = true;
 
     // the bundle context
     private BundleContext bundleContext;
@@ -116,6 +118,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     private int nRetriesWithinTransaction;
     // the delay between subsequent retries within a transaction
     private int delayBetweenRetryWithinTransactionMillis;
+    // the flag for activating / de activating the transaction check on modbus
+    // tcp
+    private boolean transactionCheckEnabled;
 
     // handle multiple reconnection attempts
     private ScheduledExecutorService reconnectionService;
@@ -155,6 +160,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         this.nRetriesWithinTransaction = ModbusDriverImpl.DEFAULT_RETRIES_WITHIN_TRANSACTION;
         // the delay between subsequent retries within a transaction
         this.delayBetweenRetryWithinTransactionMillis = ModbusDriverImpl.DEFAULT_RETRY_DELAY_WITHIN_TRANSACTION_MILLIS;
+        // the transaction check flag
+        this.transactionCheckEnabled = ModbusDriverImpl.DEFAULT_TRANSACTION_CHECK_ENABLED;
     }
 
     /**
@@ -377,6 +384,22 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         .valueOf(retryDelayWithinTransactionString);
             }
 
+            // try to get the transaction check flag
+            String enableTransactionCheckAsString = (String) properties
+                    .get(ModbusNetworkConstants.ENABLE_TRANSACTION_CHECK);
+
+            // check not null
+            if (enableTransactionCheckAsString != null)
+            {
+                // trim leading and trailing spaces
+                enableTransactionCheckAsString = enableTransactionCheckAsString
+                        .trim();
+
+                // parse the string
+                this.transactionCheckEnabled = Boolean
+                        .valueOf(enableTransactionCheckAsString);
+            }
+
             this.register();
         }
 
@@ -537,6 +560,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     public int getMaxBlacklistPollingCycles()
     {
         return this.maxBlacklistPollingCycles;
+    }
+
+    public boolean isTransactionCheckEnabled()
+    {
+        return this.transactionCheckEnabled;
     }
 
     /***************************************************************************************
@@ -1143,6 +1171,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                 {
                     // create the ModbusTCP connection
                     connection = new TCPMasterConnection(gwAddress);
+                    ((TCPMasterConnection) connection).setTimeout(
+                            (int) this.registeredGateways.get(gwIdentifier)
+                                    .getGatewayRequestTimeout());
 
                     // set the port
                     ((TCPMasterConnection) connection).setPort(gwPort);
