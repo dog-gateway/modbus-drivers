@@ -20,6 +20,7 @@ package it.polito.elite.dog.drivers.modbus.network;
 import it.polito.elite.dog.core.library.model.AbstractDevice;
 import it.polito.elite.dog.core.library.model.CNParameters;
 import it.polito.elite.dog.core.library.model.ControllableDevice;
+import it.polito.elite.dog.core.library.model.DeviceCostants;
 import it.polito.elite.dog.core.library.model.DeviceStatus;
 import it.polito.elite.dog.core.library.model.StatefulDevice;
 import it.polito.elite.dog.core.library.model.diagnostics.DeviceDiagnostics;
@@ -31,6 +32,7 @@ import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
 import it.polito.elite.dog.drivers.modbus.network.info.OrderEnum;
 import it.polito.elite.dog.drivers.modbus.network.info.RegisterTypeEnum;
+import it.polito.elite.dog.drivers.modbus.network.interfaces.DeviceRemovalListener;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import it.polito.elite.dog.drivers.modbus.network.regxlators.BaseRegXlator;
@@ -70,6 +72,12 @@ public abstract class ModbusDriverInstance extends
 
     // the device associated to the driver
     protected ControllableDevice device;
+
+    // the device reference
+    protected ServiceReference<Device> earlyLockDeviceReference;
+
+    // the device removal listener
+    protected DeviceRemovalListener deviceRemovalListener;
 
     // the endpoint address associated to this device by means of the gateway
     // attribute
@@ -116,9 +124,16 @@ public abstract class ModbusDriverInstance extends
     public ModbusDriverInstance(ModbusNetwork network, String gwAddress,
             String gwPort, String gwProtocol, SerialParameters serialParams,
             long gatewayRequestTimeout, long gatewayRequestGap,
-            BundleContext ctx, ServiceReference<Device> deviceReference)
+            BundleContext ctx, ServiceReference<Device> deviceReference,
+            DeviceRemovalListener deviceRemovalListener)
     {
         super(ctx, deviceReference, null);
+
+        String deviceId = (String) deviceReference
+                .getProperty(DeviceCostants.DEVICEURI);
+
+        // store the device removal listener
+        this.deviceRemovalListener = deviceRemovalListener;
 
         // create the class logger
         this.logger = ctx
@@ -150,6 +165,9 @@ public abstract class ModbusDriverInstance extends
 
         // open the tracker
         this.open();
+
+        // log
+        logger.info("Created driver instance for device: " + deviceId);
     }
 
     /**
@@ -189,7 +207,7 @@ public abstract class ModbusDriverInstance extends
     @Override
     public ControllableDevice addingService(ServiceReference<Device> reference)
     {
-        // get a reference to the device
+        // get a reference to the device (since the device reference was already
         Device device = this.context.getService(reference);
 
         // check if the device is a controllable device
@@ -215,7 +233,8 @@ public abstract class ModbusDriverInstance extends
             // associate the device-specific driver to the network driver
             if (this.register2Notification.keySet() != null)
             {
-                for (ModbusRegisterInfo register : this.register2Notification.keySet())
+                for (ModbusRegisterInfo register : this.register2Notification
+                        .keySet())
                     this.addToNetworkDriver(register);
             }
 
@@ -244,8 +263,23 @@ public abstract class ModbusDriverInstance extends
         // perform de-registration from the network driver
         this.network.removeDriver(this);
 
+        if (this.deviceRemovalListener != null)
+        {
+            // notify device removal listener
+            this.deviceRemovalListener.removedDevice(
+                    (String) reference.getProperty(DeviceCostants.DEVICEURI));
+            // remove the listener reference
+            this.deviceRemovalListener = null;
+        }
+
+        // remove the device reference
+        this.device = null;
+
         // release the device
         this.context.ungetService(reference);
+
+        // close the tracker
+        this.close();
     }
 
     /**
@@ -417,14 +451,11 @@ public abstract class ModbusDriverInstance extends
             // be not null
             if (error != null && dataPointInfo != null)
             {
-                // store the failed registers
-                NetworkError previousError = this.failedRegisters
-                        .put(dataPointInfo, error);
-
                 // if the previous error was null, than a new error occurred and
                 // should be notified
-                if (previousError == null)
+                if (!this.failedRegisters.containsKey(dataPointInfo))
                 {
+                    this.failedRegisters.put(dataPointInfo, error);
                     this.handleNewError(dataPointInfo, error);
                 }
             }
@@ -437,7 +468,8 @@ public abstract class ModbusDriverInstance extends
 
             // check whether the number of registers is equal to the number of
             // managed registers, in such a case set the device as offline.
-            if (this.register2Notification.keySet().size() == this.failedRegisters.size())
+            if (this.register2Notification.keySet()
+                    .size() == this.failedRegisters.size())
             {
                 this.setDeviceOnline(false);
             }
@@ -456,7 +488,8 @@ public abstract class ModbusDriverInstance extends
             }
 
             // set the device as online
-            if (this.register2Notification.keySet().size() > this.failedRegisters.size())
+            if (this.register2Notification.keySet()
+                    .size() > this.failedRegisters.size())
             {
                 this.setDeviceOnline(true);
             }

@@ -26,6 +26,7 @@ import it.polito.elite.dog.core.library.model.state.TemperatureState;
 import it.polito.elite.dog.core.library.model.statevalue.TemperatureStateValue;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
+import it.polito.elite.dog.drivers.modbus.network.interfaces.DeviceRemovalListener;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import net.wimpi.modbus.util.SerialParameters;
 
@@ -56,10 +57,12 @@ public class ModbusSingleTemperatureSensorDriverInstance
     public ModbusSingleTemperatureSensorDriverInstance(ModbusNetwork network,
             String gatewayAddress, String gatewayPort, String gatewayProtocol,
             SerialParameters serialParams, long requestTimeout, long requestGap,
-            BundleContext context, ServiceReference<Device> device)
+            BundleContext context, ServiceReference<Device> device,
+            DeviceRemovalListener listener)
     {
         super(network, gatewayAddress, gatewayPort, gatewayProtocol,
-                serialParams, requestTimeout, requestGap, context, device);
+                serialParams, requestTimeout, requestGap, context, device,
+                listener);
 
         // create a logger
         this.logger = context
