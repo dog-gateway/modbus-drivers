@@ -23,6 +23,7 @@ import org.osgi.service.device.Device;
 
 import it.polito.elite.dog.drivers.modbus.device.ModbusDeviceDriver;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
+import it.polito.elite.dog.drivers.modbus.network.interfaces.DeviceRemovalListener;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import net.wimpi.modbus.util.SerialParameters;
 
@@ -57,11 +58,11 @@ public class ModbusCo2SensorDriver extends ModbusDeviceDriver
             String gatewayPort, String gwProtocol,
             SerialParameters serialParameters, long requestTimeout,
             long requestGap, BundleContext context,
-            ServiceReference<Device> device)
+            ServiceReference<Device> device, DeviceRemovalListener listener)
     {
         return new ModbusCo2SensorDriverInstance(modbusNetwork, gatewayAddress,
                 gatewayPort, gwProtocol, serialParameters, requestTimeout,
-                requestGap, context, device);
+                requestGap, context, device, listener);
     }
 
 }

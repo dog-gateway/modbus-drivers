@@ -54,7 +54,7 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
     {
         super(network, gatewayAddress, gatewayPort, protocolVariant,
                 serialParameters, requestTimeoutMillis, requestGapMillis,
-                context, controllableDevice);
+                context, controllableDevice, null);
 
         // create a logger
         this.logger = context

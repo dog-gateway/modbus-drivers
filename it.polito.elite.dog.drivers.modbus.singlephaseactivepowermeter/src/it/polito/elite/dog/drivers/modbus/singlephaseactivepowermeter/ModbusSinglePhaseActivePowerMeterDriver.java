@@ -19,6 +19,7 @@ package it.polito.elite.dog.drivers.modbus.singlephaseactivepowermeter;
 
 import it.polito.elite.dog.drivers.modbus.device.ModbusDeviceDriver;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
+import it.polito.elite.dog.drivers.modbus.network.interfaces.DeviceRemovalListener;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import net.wimpi.modbus.util.SerialParameters;
 
@@ -51,11 +52,13 @@ public class ModbusSinglePhaseActivePowerMeterDriver extends ModbusDeviceDriver
             ModbusNetwork modbusNetwork, String gatewayAddress,
             String gatewayPort, String gwProtocol,
             SerialParameters serialParams, long requestTimeout, long requestGap,
-            BundleContext context, ServiceReference<Device> device)
+            BundleContext context, ServiceReference<Device> device,
+            DeviceRemovalListener listener)
     {
         return new ModbusSinglePhaseActivePowerMeterDriverInstance(
                 modbusNetwork, gatewayAddress, gatewayPort, gwProtocol,
-                serialParams, requestTimeout, requestGap, context, device);
+                serialParams, requestTimeout, requestGap, context, device,
+                listener);
     }
 
 }
