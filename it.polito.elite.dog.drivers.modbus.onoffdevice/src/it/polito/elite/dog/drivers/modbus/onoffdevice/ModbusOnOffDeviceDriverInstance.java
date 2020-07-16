@@ -37,6 +37,7 @@ import it.polito.elite.dog.core.library.model.statevalue.OffStateValue;
 import it.polito.elite.dog.core.library.model.statevalue.OnStateValue;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
+import it.polito.elite.dog.drivers.modbus.network.interfaces.DeviceRemovalListener;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import net.wimpi.modbus.util.SerialParameters;
 
@@ -55,10 +56,12 @@ public class ModbusOnOffDeviceDriverInstance extends ModbusDriverInstance
     public ModbusOnOffDeviceDriverInstance(ModbusNetwork network,
             String gatewayAddress, String gatewayPort, String gatewayProtocol,
             SerialParameters serialParams, long requestTimeout, long requestGap,
-            BundleContext context, ServiceReference<Device> device)
+            BundleContext context, ServiceReference<Device> device,
+            DeviceRemovalListener listener)
     {
         super(network, gatewayAddress, gatewayPort, gatewayProtocol,
-                serialParams, requestTimeout, requestGap, context, device);
+                serialParams, requestTimeout, requestGap, context, device,
+                listener);
 
         // create a logger
         this.logger = context
@@ -106,13 +109,15 @@ public class ModbusOnOffDeviceDriverInstance extends ModbusDriverInstance
     @Override
     public void on()
     {
-        this.network.write(this.register2Notification.keySet().iterator().next(), "true");
+        this.network.write(
+                this.register2Notification.keySet().iterator().next(), "true");
     }
 
     @Override
     public void off()
     {
-        this.network.write(this.register2Notification.keySet().iterator().next(), "false");
+        this.network.write(
+                this.register2Notification.keySet().iterator().next(), "false");
     }
 
     @Override

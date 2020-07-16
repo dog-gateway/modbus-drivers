@@ -6,6 +6,7 @@ import it.polito.elite.dog.drivers.modbus.gateway.ModbusGatewayDriver;
 import it.polito.elite.dog.drivers.modbus.gateway.ModbusGatewayDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
+import it.polito.elite.dog.drivers.modbus.network.interfaces.DeviceRemovalListener;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import net.wimpi.modbus.util.SerialParameters;
 
@@ -30,7 +31,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * @author bonino
  *
  */
-public abstract class ModbusDeviceDriver implements Driver
+public abstract class ModbusDeviceDriver
+        implements Driver, DeviceRemovalListener
 {
     // The OSGi framework context
     protected BundleContext context;
@@ -270,17 +272,26 @@ public abstract class ModbusDeviceDriver implements Driver
         // the gateway-level request gap
         long requestGap = gatewayInstance.getGatewayRequestGap();
 
-        ModbusDriverInstance driverInstance = this.createModbusDriverInstance(
-                this.network.get(), gwAddress, gwPort, gwProtocol,
-                serialParameters, requestTimeout, requestGap, this.context,
-                reference);
+        String deviceUri = (String) reference
+                .getProperty(DeviceCostants.DEVICEURI);
 
-        // store a reference to the connected driver
-        synchronized (this.managedInstances)
+        if (!this.managedInstances.containsKey(deviceUri))
         {
-            this.managedInstances.put(
-                    (String) reference.getProperty(DeviceCostants.DEVICEURI),
-                    driverInstance);
+            ModbusDriverInstance driverInstance = this
+                    .createModbusDriverInstance(this.network.get(), gwAddress,
+                            gwPort, gwProtocol, serialParameters,
+                            requestTimeout, requestGap, this.context,
+                            reference, this);
+            // store a reference to the connected driver
+            synchronized (this.managedInstances)
+            {
+                this.managedInstances.put(deviceUri, driverInstance);
+            }
+        }
+        else
+        {
+            logger.info("Attempt to attach an already managed device: "
+                    + deviceUri);
         }
 
         return null;
@@ -290,7 +301,7 @@ public abstract class ModbusDeviceDriver implements Driver
             ModbusNetwork modbusNetwork, String gwAddress, String gwPort,
             String gwProtocol, SerialParameters serialParameters,
             long requestTimeout, long requestGap, BundleContext context,
-            ServiceReference<Device> device);
+            ServiceReference<Device> device, DeviceRemovalListener listener);
 
     /**
      * Fill a set with all the device categories whose devices can match with
@@ -327,6 +338,16 @@ public abstract class ModbusDeviceDriver implements Driver
             // register this driver in the OSGi framework
             this.regDriver = this.context
                     .registerService(Driver.class.getName(), this, propDriver);
+        }
+
+    }
+
+    @Override
+    public void removedDevice(String deviceUid)
+    {
+        synchronized (this.managedInstances)
+        {
+            this.managedInstances.remove(deviceUid);
         }
 
     }

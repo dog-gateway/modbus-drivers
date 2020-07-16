@@ -402,7 +402,9 @@ public class ModbusPoller extends Thread
                                 if (responseTransactionId != Modbus.DEFAULT_TRANSACTION_ID
                                         && (responseTransactionId < firstTransactionId
                                                 || responseTransactionId > transaction
-                                                        .getTransactionID()) && this.driver.isTransactionCheckEnabled())
+                                                        .getTransactionID())
+                                        && this.driver
+                                                .isTransactionCheckEnabled())
                                 {
                                     this.logger.error(
                                             "Received response with wrong transaction ID, ignoring it. Expected: "
@@ -642,13 +644,20 @@ public class ModbusPoller extends Thread
         // get the set of drivers to notify
         Set<ModbusDriverInstance> drivers = this.driver.getRegister2Driver()
                 .get(register);
+
         // if at least a driver is registered for the current
         // register,
         // iterate over the driver list
         if (drivers != null)
         {
+            // log the number of drivers to notify
+            logger.info("Number of drivers to notify: " + drivers.size());
+            
             for (ModbusDriverInstance driver : drivers)
             {
+                // log the notified device
+                logger.info("Notified driver: " + driver + " for device: "
+                        + driver.device.getDeviceId());
                 // notify device unreachable
                 driver.setReachable(register, false, error);
             }
