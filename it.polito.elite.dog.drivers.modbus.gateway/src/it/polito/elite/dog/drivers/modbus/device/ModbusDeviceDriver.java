@@ -290,7 +290,7 @@ public abstract class ModbusDeviceDriver
         }
         else
         {
-            logger.info("Attempt to attach an already managed device: "
+            logger.warn("Attempt to attach an already managed device: "
                     + deviceUri);
         }
 

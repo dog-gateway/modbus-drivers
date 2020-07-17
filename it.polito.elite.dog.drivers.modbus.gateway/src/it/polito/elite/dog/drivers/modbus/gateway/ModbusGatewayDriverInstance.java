@@ -23,6 +23,7 @@ import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
 import it.polito.elite.dog.core.library.model.diagnostics.NetworkError;
 import it.polito.elite.dog.drivers.modbus.network.ModbusDriverInstance;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusRegisterInfo;
+import it.polito.elite.dog.drivers.modbus.network.interfaces.DeviceRemovalListener;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import net.wimpi.modbus.util.SerialParameters;
 
@@ -50,11 +51,12 @@ public class ModbusGatewayDriverInstance extends ModbusDriverInstance
             ServiceReference<Device> controllableDevice, String gatewayAddress,
             String gatewayPort, String protocolVariant,
             SerialParameters serialParameters, long requestTimeoutMillis,
-            long requestGapMillis, BundleContext context)
+            long requestGapMillis, BundleContext context,
+            DeviceRemovalListener listener)
     {
         super(network, gatewayAddress, gatewayPort, protocolVariant,
                 serialParameters, requestTimeoutMillis, requestGapMillis,
-                context, controllableDevice, null);
+                context, controllableDevice, listener);
 
         // create a logger
         this.logger = context
