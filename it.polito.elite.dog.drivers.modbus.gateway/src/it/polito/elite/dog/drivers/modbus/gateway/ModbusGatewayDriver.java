@@ -21,6 +21,7 @@ import it.polito.elite.dog.core.library.model.ControllableDevice;
 import it.polito.elite.dog.core.library.model.DeviceCostants;
 import it.polito.elite.dog.core.library.model.devicecategory.ModbusGateway;
 import it.polito.elite.dog.drivers.modbus.network.info.ModbusInfo;
+import it.polito.elite.dog.drivers.modbus.network.interfaces.DeviceRemovalListener;
 import it.polito.elite.dog.drivers.modbus.network.interfaces.ModbusNetwork;
 import it.polito.elite.dog.drivers.modbus.network.protocol.ModbusProtocolVariant;
 import org.osgi.framework.BundleContext;
@@ -48,7 +49,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * @see <a href="http://elite.polito.it">http://elite.polito.it</a>
  * 
  */
-public class ModbusGatewayDriver implements Driver
+public class ModbusGatewayDriver implements Driver, DeviceRemovalListener
 {
 
     // The OSGi framework context
@@ -279,31 +280,40 @@ public class ModbusGatewayDriver implements Driver
                             && deviceInfo.getIpAddress() != null
                             && !deviceInfo.getIpAddress().isEmpty()))
             {
-
-                // create a new instance of the gateway driver
-                ModbusGatewayDriverInstance driver = new ModbusGatewayDriverInstance(
-                        this.network.get(), reference,
-                        deviceInfo.getIpAddress(), deviceInfo.getTcpPort(),
-                        deviceInfo.getProtocolVariant(),
-                        deviceInfo.getSerialParameters(),
-                        deviceInfo.getRequestTimeoutMillis(),
-                        deviceInfo.getRequestGapMillis(), this.context);
-
-                synchronized (this.connectedGateways)
+                // check if the gateway is not already managed
+                if (!this.connectedGateways.containsKey(deviceId))
                 {
-                    // store a reference to the gateway driver
-                    this.connectedGateways.put(deviceId, driver);
+                    // create a new instance of the gateway driver
+                    ModbusGatewayDriverInstance driver = new ModbusGatewayDriverInstance(
+                            this.network.get(), reference,
+                            deviceInfo.getIpAddress(), deviceInfo.getTcpPort(),
+                            deviceInfo.getProtocolVariant(),
+                            deviceInfo.getSerialParameters(),
+                            deviceInfo.getRequestTimeoutMillis(),
+                            deviceInfo.getRequestGapMillis(), this.context,
+                            this);
+
+                    synchronized (this.connectedGateways)
+                    {
+                        // store a reference to the gateway driver
+                        this.connectedGateways.put(deviceId, driver);
+                    }
+
+                    // modify the service description causing a forcing the
+                    // framework to send a modified service notification
+                    final Hashtable<String, Object> propDriver = new Hashtable<String, Object>();
+                    propDriver.put(DeviceCostants.DRIVER_ID,
+                            "Modbus_ModbusGateway_driver");
+                    propDriver.put(DeviceCostants.GATEWAY_COUNT,
+                            this.connectedGateways.size());
+
+                    this.regDriver.setProperties(propDriver);
                 }
-
-                // modify the service description causing a forcing the
-                // framework to send a modified service notification
-                final Hashtable<String, Object> propDriver = new Hashtable<String, Object>();
-                propDriver.put(DeviceCostants.DRIVER_ID,
-                        "Modbus_ModbusGateway_driver");
-                propDriver.put(DeviceCostants.GATEWAY_COUNT,
-                        this.connectedGateways.size());
-
-                this.regDriver.setProperties(propDriver);
+                else
+                {
+                    logger.warn(
+                            "Attempt to attach an already managed gateway.");
+                }
 
             }
             else
@@ -354,5 +364,12 @@ public class ModbusGatewayDriver implements Driver
     public ModbusNetwork getNetwork()
     {
         return this.network.get();
+    }
+
+    @Override
+    public void removedDevice(String deviceUid)
+    {
+        this.connectedGateways.remove(deviceUid);
+
     }
 }
