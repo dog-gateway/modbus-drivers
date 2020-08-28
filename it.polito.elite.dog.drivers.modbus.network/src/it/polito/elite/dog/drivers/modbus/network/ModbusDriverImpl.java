@@ -89,6 +89,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     public static final int DEFAULT_RETRY_DELAY_WITHIN_TRANSACTION_MILLIS = 5;
     // the default for transaction check flag
     public static final boolean DEFAULT_TRANSACTION_CHECK_ENABLED = true;
+    // the default maximum delta between request and response transaction IDs
+    public static final int DEFAULT_MAX_TRANSACTION_ID_DELTA = 0;
+    // the default behavior in case of transaction check failure
+    public static final boolean DEFAULT_DISCONNECT_ON_TRANSACTION_CHECK_FAILURE = false;
 
     // the bundle context
     private BundleContext bundleContext;
@@ -98,8 +102,10 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     private AtomicReference<LoggerFactory> loggerFactory;
     // the driver logger
     private Logger logger;
+    // the driver configuration
+    private ModbusDriverConfiguration configuration;
+
     // the register to driver map
-    // TODO: extend to allow multiple driver per register
     private Map<ModbusRegisterInfo, Set<ModbusDriverInstance>> register2Driver;
     // the inverse map
     private Map<ModbusDriverInstance, Set<ModbusRegisterInfo>> driver2Register;
@@ -107,27 +113,15 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     private Map<String, Set<ModbusRegisterInfo>> gatewayAddress2Registers;
     // the set of gateways currently registered on the network driver
     private Map<String, ModbusDriverInstance> registeredGateways;
-    // the baseline pollingTime adopted if no server-specific setting is given
-    private int pollingTimeMillis;
-    // the number of connection trials
-    private int nConnectionTrials;
+
+    // FIXME: the number of attempted trials should be tracked for every single
+    // gateway and not globally.
     private int trialsDone;
-    // the time that must occur between two subsequent trials
-    private int betweenTrialTimeMillis;
-    // the number of retries to perform within a modbus transaction
-    private int nRetriesWithinTransaction;
-    // the delay between subsequent retries within a transaction
-    private int delayBetweenRetryWithinTransactionMillis;
-    // the flag for activating / de activating the transaction check on modbus
-    // tcp
-    private boolean transactionCheckEnabled;
 
     // handle multiple reconnection attempts
     private ScheduledExecutorService reconnectionService;
     private Map<String, Future<?>> activeReconnectionTimers;
 
-    // number of cycles that a broken register will be in the blacklist
-    private int maxBlacklistPollingCycles;
     // the set of modbus poller, one per each gateway.
     private Map<String, ModbusPoller> pollerPool;
     // the modbus connection pool
@@ -146,22 +140,6 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         // be handled in paralell.
         this.reconnectionService = Executors.newScheduledThreadPool(1);
         this.activeReconnectionTimers = new HashMap<String, Future<?>>();
-
-        // -- initialize defaults
-        // the polling time
-        this.pollingTimeMillis = ModbusDriverImpl.DEFAULT_POLLING_TIME_MILLIS;
-        // the number of connection trials
-        this.nConnectionTrials = ModbusDriverImpl.DEFAULT_N_RECONNECTION_ATTEMPTS;
-        // the time that must occur between two subsequent trials
-        this.betweenTrialTimeMillis = ModbusDriverImpl.DEFAULT_RECONNECTION_INTERVAL_MILLIS;
-        // number of cycles that a broken register will be in the blacklist
-        this.maxBlacklistPollingCycles = ModbusDriverImpl.DEFAULT_BLACKLIST_DURATION;
-        // the number of retries to perform within a modbus transaction
-        this.nRetriesWithinTransaction = ModbusDriverImpl.DEFAULT_RETRIES_WITHIN_TRANSACTION;
-        // the delay between subsequent retries within a transaction
-        this.delayBetweenRetryWithinTransactionMillis = ModbusDriverImpl.DEFAULT_RETRY_DELAY_WITHIN_TRANSACTION_MILLIS;
-        // the transaction check flag
-        this.transactionCheckEnabled = ModbusDriverImpl.DEFAULT_TRANSACTION_CHECK_ENABLED;
     }
 
     /**
@@ -207,6 +185,9 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     {
         // store the bundle context
         this.bundleContext = bundleContext;
+
+        // build the driver configuration
+        this.configuration = new ModbusDriverConfiguration(this.logger);
 
         // set the number of done trials to 0
         this.trialsDone = 0;
@@ -293,112 +274,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         // get the bundle configuration parameters
         if (properties != null)
         {
-            // try to get the baseline polling time
-            String pollingTimeAsString = (String) properties
-                    .get(ModbusNetworkConstants.POLLING_TIME_MILLIS);
-
-            // check not null
-            if (pollingTimeAsString != null)
-            {
-                // trim leading and trailing spaces
-                pollingTimeAsString = pollingTimeAsString.trim();
-                // parse the string
-                this.pollingTimeMillis = Integer.valueOf(pollingTimeAsString);
-            }
-
-            // try to get the baseline polling time
-            String betweenTrialTimeMillisAsString = (String) properties
-                    .get(ModbusNetworkConstants.RETRY_PERIOD_MILLIS);
-
-            // check not null
-            if (betweenTrialTimeMillisAsString != null)
-            {
-                // trim leading and trailing spaces
-                betweenTrialTimeMillisAsString = betweenTrialTimeMillisAsString
-                        .trim();
-
-                // parse the string
-                this.betweenTrialTimeMillis = Integer
-                        .valueOf(betweenTrialTimeMillisAsString);
-            }
-            // try to get the baseline polling time
-            String numTryAsString = (String) properties
-                    .get(ModbusNetworkConstants.N_RETRIES);
-
-            // check not null
-            if (numTryAsString != null)
-            {
-                // trim leading and trailing spaces
-                numTryAsString = numTryAsString.trim();
-
-                // parse the string
-                this.nConnectionTrials = Integer.valueOf(numTryAsString);
-            }
-
-            // try to get the maxBlacklistPollingCycles
-            String maxBlacklistPollingCyclesAsString = (String) properties
-                    .get(ModbusNetworkConstants.BLACKLIST_CYCLE);
-
-            // check not null
-            if (maxBlacklistPollingCyclesAsString != null)
-            {
-                // trim maxBlacklistPollingCycles
-                maxBlacklistPollingCyclesAsString = maxBlacklistPollingCyclesAsString
-                        .trim();
-                // parse the string
-                this.maxBlacklistPollingCycles = Integer
-                        .valueOf(maxBlacklistPollingCyclesAsString);
-            }
-
-            // try to get the number of retries that should be performed within
-            // a transaction
-            String numRetryWithinTransactionString = (String) properties
-                    .get(ModbusNetworkConstants.N_RETRIES_PER_TRANSACTION);
-
-            // check not null
-            if (numRetryWithinTransactionString != null)
-            {
-                // trim leading and trailing spaces
-                numRetryWithinTransactionString = numRetryWithinTransactionString
-                        .trim();
-
-                // parse the string
-                this.nRetriesWithinTransaction = Integer
-                        .valueOf(numRetryWithinTransactionString);
-            }
-
-            // try to get the number of retries that should be performed within
-            // a transaction
-            String retryDelayWithinTransactionString = (String) properties
-                    .get(ModbusNetworkConstants.RETRY_DELAY_WITHIN_TRANSACTION);
-
-            // check not null
-            if (retryDelayWithinTransactionString != null)
-            {
-                // trim leading and trailing spaces
-                retryDelayWithinTransactionString = retryDelayWithinTransactionString
-                        .trim();
-
-                // parse the string
-                this.delayBetweenRetryWithinTransactionMillis = Integer
-                        .valueOf(retryDelayWithinTransactionString);
-            }
-
-            // try to get the transaction check flag
-            String enableTransactionCheckAsString = (String) properties
-                    .get(ModbusNetworkConstants.ENABLE_TRANSACTION_CHECK);
-
-            // check not null
-            if (enableTransactionCheckAsString != null)
-            {
-                // trim leading and trailing spaces
-                enableTransactionCheckAsString = enableTransactionCheckAsString
-                        .trim();
-
-                // parse the string
-                this.transactionCheckEnabled = Boolean
-                        .valueOf(enableTransactionCheckAsString);
-            }
+            this.configuration.updated(properties);
 
             this.register();
         }
@@ -511,14 +387,14 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     }
 
     /**
-     * Provides the polling time to be used by Poller threads connect to this
-     * driver instance...
+     * Provides the configuration associated to this driver instance.
      * 
-     * @return
+     * @return The driver configuration as a {@link ModbusDriverConfiguration}
+     *         instance.
      */
-    public long getPollingTimeMillis()
+    public ModbusDriverConfiguration getConfiguration()
     {
-        return this.pollingTimeMillis;
+        return this.configuration;
     }
 
     /**
@@ -551,20 +427,6 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     public Map<String, MasterConnection> getConnectionPool()
     {
         return connectionPool;
-    }
-
-    /**
-     * 
-     * @return the maxBlacklistPollingCycles
-     */
-    public int getMaxBlacklistPollingCycles()
-    {
-        return this.maxBlacklistPollingCycles;
-    }
-
-    public boolean isTransactionCheckEnabled()
-    {
-        return this.transactionCheckEnabled;
     }
 
     /***************************************************************************************
@@ -1237,13 +1099,17 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                     // successful
                     this.notifyGatewayConnectionStatus(gwIdentifier, false);
 
-                    if ((this.trialsDone < this.nConnectionTrials)
-                            || (this.nConnectionTrials == 0))
+                    if ((this.trialsDone < this.configuration
+                            .getNumberOfConnectionTrials())
+                            || (this.configuration
+                                    .getNumberOfConnectionTrials() == 0))
                     {
                         // log a warning
                         this.logger.warn(
                                 "Unable to connect to the given Modbus gateway, retrying in "
-                                        + this.betweenTrialTimeMillis + " ms");
+                                        + this.configuration
+                                                .getBetweenTrialTimeMillis()
+                                        + " ms");
 
                         // schedule a new timer to re-call the open function
                         // after
@@ -1274,7 +1140,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         // schedule
                         Future<?> reconnectionTaskResult = this.reconnectionService
                                 .schedule(openConnectionTask,
-                                        this.betweenTrialTimeMillis,
+                                        this.configuration
+                                                .getBetweenTrialTimeMillis(),
                                         TimeUnit.MILLISECONDS);
 
                         // store the future
@@ -1284,7 +1151,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
                         // avoid incrementing the number of trials if the
                         // nConnectionTrials is equal to 0 (i.e. infinite
                         // re-trial)
-                        if (this.nConnectionTrials != 0)
+                        if (this.configuration
+                                .getNumberOfConnectionTrials() != 0)
+                            // FIXME: the number of trials done should be scoped
+                            // to each single connection/gateway whereas her it
+                            // is global.
                             this.trialsDone++;
                     }
                     else
@@ -1368,7 +1239,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
             {
                 // re schedule
                 reconnectionTaskResult = this.reconnectionService.schedule(
-                        openConnectionTask, this.betweenTrialTimeMillis,
+                        openConnectionTask,
+                        this.configuration.getBetweenTrialTimeMillis(),
                         TimeUnit.MILLISECONDS);
 
                 // store the future
@@ -1387,7 +1259,8 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         {
             // schedule
             Future<?> reconnectionTaskResult = this.reconnectionService
-                    .schedule(openConnectionTask, this.betweenTrialTimeMillis,
+                    .schedule(openConnectionTask,
+                            this.configuration.getBetweenTrialTimeMillis(),
                             TimeUnit.MILLISECONDS);
 
             // store the future
@@ -1452,10 +1325,11 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
         if (transaction != null)
         {
             // set transaction retries
-            transaction.setRetries(this.nRetriesWithinTransaction);
+            transaction.setRetries(
+                    this.configuration.getNumberOfRetriesWithinTransaction());
             // set transaction delay
-            transaction.setTransDelayMS(
-                    this.delayBetweenRetryWithinTransactionMillis);
+            transaction.setTransDelayMS(this.configuration
+                    .getDelayBetweenRetriesWithinTransactionMillis());
         }
 
         // return the created transaction
