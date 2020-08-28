@@ -98,7 +98,8 @@ public class ModbusPoller extends Thread
         // get the maximum time for which a register shall be in the blacklist
         // after such a number of polling cycles the register will be
         // white-listed and re-inserted in the "polling" set.
-        max_time_in_blacklist = modbusDriverImpl.getMaxBlacklistPollingCycles();
+        max_time_in_blacklist = modbusDriverImpl.getConfiguration()
+                .getMaxBlacklistPollingCycles();
     }
 
     /*
@@ -148,7 +149,8 @@ public class ModbusPoller extends Thread
             // the given polling time
             try
             {
-                Thread.sleep(this.driver.getPollingTimeMillis());
+                Thread.sleep(
+                        this.driver.getConfiguration().getPollingTimeMillis());
             }
             catch (InterruptedException e)
             {
@@ -367,9 +369,6 @@ public class ModbusPoller extends Thread
                                 .getTransaction(readRequest, modbusConnection,
                                         variant);
 
-                        // get the initial transaction id
-                        int firstTransactionId = transaction.getTransactionID();
-
                         // try to execute the transaction and manage possible
                         // errors...
                         try
@@ -386,42 +385,46 @@ public class ModbusPoller extends Thread
                                 // -- check the transaction id --
                                 int responseTransactionId = response
                                         .getTransactionID();
-                                // if the response transaction id is the
-                                // default, then the transport might not support
-                                // transaction IDs (available on modbus TCP
-                                // only).
-                                // FIXME: according to Jamod implementation, the
-                                // first part of the check on the transaction id
-                                // should use a <= instead of a <, as in theory
-                                // < allows for reading values belonging to a
-                                // previous transaction. Nevertheless there is
-                                // evidence of devices providing transaction IDs
-                                // misaligned by 1 with respect to requests.
-                                // leaving the < in the check may lead to wrong
-                                // data assignment in particular cases.
+                                int requestTransactionId = transaction
+                                        .getTransactionID();
+
                                 if (responseTransactionId != Modbus.DEFAULT_TRANSACTION_ID
-                                        && (responseTransactionId < firstTransactionId
-                                                || responseTransactionId > transaction
-                                                        .getTransactionID())
-                                        && this.driver
-                                                .isTransactionCheckEnabled())
+                                        && this.driver.getConfiguration()
+                                                .isTransactionCheckEnabled()
+                                        && (Math.abs(requestTransactionId
+                                                - responseTransactionId) > this.driver
+                                                        .getConfiguration()
+                                                        .getMaxTransactionDelta()))
                                 {
                                     this.logger.error(
                                             "Received response with wrong transaction ID, ignoring it. Expected: "
-                                                    + transaction
-                                                            .getTransactionID()
+                                                    + requestTransactionId
                                                     + " Received: "
                                                     + responseTransactionId);
-                                    // cause a generic IO error
-                                    // TODO: add new NetworkError for this.
-                                    throw new ModbusIOException();
+                                    // check if connection should be closed
+                                    if (this.driver.getConfiguration()
+                                            .isDisconnectOnTransactionErrors())
+                                    {
+                                        // a generic modbus exception marks the
+                                        // register as failed and causes the
+                                        // connection closure.
+                                        throw new ModbusException();
+                                    }
+                                    else
+                                    {
+                                        // only marks the register as failed
+                                        throw new ModbusIOException();
+                                    }
                                 }
                                 else
                                 {
-                                    this.logger.debug("Transaction Id: "
-                                            + responseTransactionId
-                                            + " - sent: "
-                                            + transaction.getTransactionID());
+                                    if (responseTransactionId != Modbus.DEFAULT_TRANSACTION_ID)
+                                    {
+                                        this.logger.debug("Transaction Id: received: "
+                                                + responseTransactionId
+                                                + " - sent: "
+                                                + requestTransactionId);
+                                    }
                                     // handle possible number format exceptions
                                     // generated on translation of register
                                     // values. Errors might still occur for non-
@@ -652,7 +655,7 @@ public class ModbusPoller extends Thread
         {
             // log the number of drivers to notify
             logger.info("Number of drivers to notify: " + drivers.size());
-            
+
             for (ModbusDriverInstance driver : drivers)
             {
                 // log the notified device
