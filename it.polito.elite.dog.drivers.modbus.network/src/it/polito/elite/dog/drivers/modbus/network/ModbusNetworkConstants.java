@@ -38,5 +38,9 @@ public class ModbusNetworkConstants
     public static final String RETRY_DELAY_WITHIN_TRANSACTION = "retryDelayWithinTransactionMillis";
     // the transaction check enable
     public static final String ENABLE_TRANSACTION_CHECK = "enableTransactionCheck";
-    
+    // the maximum delta between request and response transaction IDs
+    public static final String MAX_TRANSACTION_ID_DELTA = "maxDeltaBetweenRequestResponseIDs";
+    // the flag to force the driver to disconnect on transaction check failures
+    public static final Object DISCONNECT_ON_TRANSACTION_CHECK_FAILURE = "disconnectOnTransactionCheckFailure";
+
 }
