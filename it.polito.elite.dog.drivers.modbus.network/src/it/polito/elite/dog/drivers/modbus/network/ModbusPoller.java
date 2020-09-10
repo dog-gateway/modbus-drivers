@@ -654,12 +654,12 @@ public class ModbusPoller extends Thread
         if (drivers != null)
         {
             // log the number of drivers to notify
-            logger.info("Number of drivers to notify: " + drivers.size());
+            logger.trace("Number of drivers to notify: " + drivers.size());
 
             for (ModbusDriverInstance driver : drivers)
             {
                 // log the notified device
-                logger.info("Notified driver: " + driver + " for device: "
+                logger.trace("Notified driver: " + driver + " for device: "
                         + driver.device.getDeviceId());
                 // notify device unreachable
                 driver.setReachable(register, false, error);
