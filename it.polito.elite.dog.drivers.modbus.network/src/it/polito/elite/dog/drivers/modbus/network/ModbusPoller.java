@@ -379,7 +379,7 @@ public class ModbusPoller extends Thread
                                 .getTransaction(readRequest, modbusConnection,
                                         variant);
 
-                        // get the initial value of the transaction id sentot o
+                        // get the initial value of the transaction id sent o
                         // the device
                         // computed by accounting inner implementation of jamod
                         // (to be improved)
