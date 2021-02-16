@@ -36,8 +36,10 @@ import org.osgi.service.log.Logger;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 /**
@@ -79,6 +81,9 @@ public class ModbusPoller extends Thread
     // the register blacklist
     public Map<ModbusRegisterInfo, Integer> blacklist;
 
+    // the transaction id map
+    public Hashtable<Integer, ModbusRegisterInfo> pendingTransactions;
+
     public ModbusPoller(ModbusDriverImpl modbusDriverImpl,
             String gatewayIdentifier)
     {
@@ -100,6 +105,9 @@ public class ModbusPoller extends Thread
         // white-listed and re-inserted in the "polling" set.
         max_time_in_blacklist = modbusDriverImpl.getConfiguration()
                 .getMaxBlacklistPollingCycles();
+
+        // initialize the pending transactions
+        this.pendingTransactions = new Hashtable<>();
     }
 
     /*
@@ -339,6 +347,8 @@ public class ModbusPoller extends Thread
 
                         // get the current register
                         ModbusRegisterInfo register = regIterator.next();
+                        // set the current register as the one to be notified
+                        ModbusRegisterInfo registerToNotify = register;
 
                         // debug for read register
                         this.logger.debug("Querying register: "
@@ -360,14 +370,21 @@ public class ModbusPoller extends Thread
                         readRequest.setUnitID(register.getSlaveId());
 
                         // debug
-                        this.logger
-                                .debug("Sent: " + readRequest.getHexMessage());
+                        this.logger.debug(
+                                "Sending: " + readRequest.getHexMessage());
 
                         // create a modbus tcp transaction for the just created
                         // readRequest
                         ModbusTransaction transaction = this.driver
                                 .getTransaction(readRequest, modbusConnection,
                                         variant);
+
+                        // get the initial value of the transaction id sentot o
+                        // the device
+                        // computed by accounting inner implementation of jamod
+                        // (to be improved)
+                        int initialTransactionId = transaction
+                                .getTransactionID() + 1;
 
                         // try to execute the transaction and manage possible
                         // errors...
@@ -382,107 +399,105 @@ public class ModbusPoller extends Thread
                             // fails
                             if (response != null)
                             {
-                                // -- check the transaction id --
-                                int responseTransactionId = response
-                                        .getTransactionID();
-                                int requestTransactionId = transaction
-                                        .getTransactionID();
 
-                                if (responseTransactionId != Modbus.DEFAULT_TRANSACTION_ID
-                                        && this.driver.getConfiguration()
-                                                .isTransactionCheckEnabled()
-                                        && (Math.abs(requestTransactionId
-                                                - responseTransactionId) > this.driver
-                                                        .getConfiguration()
-                                                        .getMaxTransactionDelta()))
+                                // transaction id check only on modbus tcp
+                                if (register
+                                        .getGatewayProtocol() == ModbusProtocolVariant.TCP)
                                 {
-                                    this.logger.error(
-                                            "Received response with wrong transaction ID, ignoring it. Expected: "
-                                                    + requestTransactionId
-                                                    + " Received: "
-                                                    + responseTransactionId);
-                                    // check if connection should be closed
-                                    if (this.driver.getConfiguration()
-                                            .isDisconnectOnTransactionErrors())
+
+                                    // get the request transaction id
+                                    int requestTransactionId = transaction
+                                            .getTransactionID();
+
+                                    this.logger.info("Initial transaction id: "
+                                            + initialTransactionId
+                                            + ", actual transaction id: "
+                                            + requestTransactionId);
+
+                                    // store the request in the pending
+                                    // transactions (only here the correct
+                                    // transaction id can be retrieved), this is
+                                    // not necessarily equal to the response
+                                    // transaction id. If more than one request
+                                    // where performed within the same
+                                    // transaction, store all requests.
+                                    for (int i = initialTransactionId; i <= requestTransactionId; i++)
                                     {
-                                        // a generic modbus exception marks the
-                                        // register as failed and causes the
-                                        // connection closure.
-                                        throw new ModbusException();
+                                        this.pendingTransactions.put(i,
+                                                register);
+                                    }
+
+                                    // clean entries older than 16 transactions
+                                    this.cleanPendingTransactions(
+                                            requestTransactionId);
+
+                                    // get the response transaction id
+                                    int responseTransactionId = response
+                                            .getTransactionID();
+
+                                    // handle response using the pending
+                                    // transactions table
+                                    ModbusRegisterInfo responseRegister = this.pendingTransactions
+                                            .remove(responseTransactionId);
+
+                                    if (responseRegister != null)
+                                    {
+                                        registerToNotify = responseRegister;
                                     }
                                     else
                                     {
-                                        // only marks the register as failed
-                                        throw new ModbusIOException();
-                                    }
-                                }
-                                else
-                                {
-                                    if (responseTransactionId != Modbus.DEFAULT_TRANSACTION_ID)
-                                    {
-                                        this.logger.debug("Transaction Id: received: "
-                                                + responseTransactionId
-                                                + " - sent: "
-                                                + requestTransactionId);
-                                    }
-                                    // handle possible number format exceptions
-                                    // generated on translation of register
-                                    // values. Errors might still occur for non-
-                                    // numeric values
-                                    try
-                                    {
-                                        // debug
-                                        String responseAsString = response
-                                                .getHexMessage();
-                                        this.logger.debug("Received -> "
-                                                + responseAsString);
-
-                                        // get the response value
-                                        Object value = register.getXlator()
-                                                .getValue(response);
-
-                                        this.logger.debug(
-                                                "Translated into -> " + value);
-
-                                        // check not null
-                                        if (value != null)
+                                        // log
+                                        this.logger.error(
+                                                "Unable to handle incoming response with unexpected transaction ID: "
+                                                        + responseTransactionId
+                                                        + " was expecting: "
+                                                        + requestTransactionId);
+                                        // check if connection should be closed
+                                        if (this.driver.getConfiguration()
+                                                .isDisconnectOnTransactionErrors())
                                         {
-
-                                            // dispatch the new message...
-                                            // TODO: check if this shall be done
-                                            // asynchronously
-                                            Set<ModbusDriverInstance> drivers = this.driver
-                                                    .getRegister2Driver()
-                                                    .get(register);
-
-                                            if (drivers != null)
-                                            {
-                                                for (ModbusDriverInstance driver : drivers)
-                                                {
-                                                    // notify the value
-                                                    driver.newMessageFromHouse(
-                                                            register, value);
-                                                    // set the device as
-                                                    // reachable
-                                                    driver.setReachable(
-                                                            register, true,
-                                                            error);
-                                                }
-                                            }
-
-                                            // successful read operation!
-                                            read = true;
+                                            // a generic modbus exception marks
+                                            // the
+                                            // register as failed and causes the
+                                            // connection closure.
+                                            throw new ModbusException();
+                                        }
+                                        else
+                                        {
+                                            // only marks the register as failed
+                                            throw new ModbusIOException();
                                         }
                                     }
-                                    catch (NumberFormatException nfe)
-                                    {
-                                        this.logger.warn(
-                                                "Unable to translate modbus register value. Received value: {}",
-                                                response.getHexMessage());
-                                        // set the error
-                                        error = NetworkError.VALUE_TRANSLATION;
-                                    }
                                 }
+
+                                // parse the register value
+                                // handle possible number format exceptions
+                                // generated on translation of register
+                                // values. Errors might still occur for non-
+                                // numeric values
+                                Object registerValue = null;
+                                try
+                                {
+                                    registerValue = this.parseRegisterValue(
+                                            registerToNotify, response);
+
+                                }
+                                catch (NumberFormatException nfe)
+                                {
+                                    this.logger.warn(
+                                            "Unable to translate modbus register value. Received value: {}",
+                                            response.getHexMessage());
+                                    // set the error
+                                    error = NetworkError.VALUE_TRANSLATION;
+                                }
+
+                                if (registerValue != null)
+                                {
+                                    this.dispatchRegisterValue(registerToNotify,
+                                            registerValue);
+                                    read = true;
+                                }
+
                             }
                         }
                         catch (ModbusIOException mioe)
@@ -641,6 +656,45 @@ public class ModbusPoller extends Thread
 
     }
 
+    private Object parseRegisterValue(ModbusRegisterInfo register,
+            ModbusResponse response)
+    {
+        Object value = null;
+
+        // debug
+        String responseAsString = response.getHexMessage();
+        this.logger.debug("Received -> " + responseAsString);
+
+        // get the response value
+        value = register.getXlator().getValue(response);
+
+        this.logger.debug("Translated into -> " + value);
+
+        return value;
+    }
+
+    private void dispatchRegisterValue(ModbusRegisterInfo register,
+            Object value)
+    {
+        // dispatch the new message...
+        // TODO: check if this shall be done
+        // asynchronously
+        Set<ModbusDriverInstance> drivers = this.driver.getRegister2Driver()
+                .get(register);
+
+        if (drivers != null)
+        {
+            for (ModbusDriverInstance driver : drivers)
+            {
+                // notify the value
+                driver.newMessageFromHouse(register, value);
+                // set the device as
+                // reachable
+                driver.setReachable(register, true, null);
+            }
+        }
+    }
+
     private void notifyUnreachableRegister(ModbusRegisterInfo register,
             NetworkError error)
     {
@@ -665,5 +719,37 @@ public class ModbusPoller extends Thread
                 driver.setReachable(register, false, error);
             }
         }
+    }
+
+    private void cleanPendingTransactions(int lastTransactionId)
+    {
+        // compute the oldest transaction id to keep
+        int oldestToKeep = lastTransactionId > 16 ? lastTransactionId - 16
+                : Modbus.MAX_TRANSACTION_ID - (16 - lastTransactionId);
+
+        // if there are potentially transactions to remove
+
+        // remove transactions older than the oldest to keep
+        Iterator<Entry<Integer, ModbusRegisterInfo>> pendingTransactionsIterator = this.pendingTransactions
+                .entrySet().iterator();
+
+        // remove ol entries handling the "overflow" of transaction ids.
+        while (pendingTransactionsIterator.hasNext())
+        {
+            Entry<Integer, ModbusRegisterInfo> currentEntry = pendingTransactionsIterator
+                    .next();
+
+            if (currentEntry.getKey() < oldestToKeep
+                    && currentEntry.getKey() > lastTransactionId)
+            {
+                // log the error
+                this.logger.error("Removing pending transaction with id: "
+                        + currentEntry.getKey()
+                        + " that corresponds to a request that is behind the current of more than 16 transactions. Current transaction: "
+                        + lastTransactionId);
+                pendingTransactionsIterator.remove();
+            }
+        }
+
     }
 }
