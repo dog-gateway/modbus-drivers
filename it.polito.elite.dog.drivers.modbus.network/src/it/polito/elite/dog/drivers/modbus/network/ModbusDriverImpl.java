@@ -90,7 +90,7 @@ public class ModbusDriverImpl implements ModbusNetwork, ManagedService
     // the default for transaction check flag
     public static final boolean DEFAULT_TRANSACTION_CHECK_ENABLED = true;
     // the default maximum delta between request and response transaction IDs
-    public static final int DEFAULT_MAX_TRANSACTION_ID_DELTA = 0;
+    public static final int DEFAULT_MAX_OPEN_TRANSACTIONS = 16;
     // the default behavior in case of transaction check failure
     public static final boolean DEFAULT_DISCONNECT_ON_TRANSACTION_CHECK_FAILURE = false;
 

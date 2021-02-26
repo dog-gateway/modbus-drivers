@@ -427,7 +427,7 @@ public class ModbusPoller extends Thread
                                                 register);
                                     }
 
-                                    // clean entries older than 16 transactions
+                                    // clean entries older than maxOpenTransactions transactions
                                     this.cleanPendingTransactions(
                                             requestTransactionId);
 
@@ -723,9 +723,14 @@ public class ModbusPoller extends Thread
 
     private void cleanPendingTransactions(int lastTransactionId)
     {
+        // the maximum open transactions
+        int maxOpenTransactions = this.driver.getConfiguration()
+                .getMaxOpenTransactions();
         // compute the oldest transaction id to keep
-        int oldestToKeep = lastTransactionId > 16 ? lastTransactionId - 16
-                : Modbus.MAX_TRANSACTION_ID - (16 - lastTransactionId);
+        int oldestToKeep = lastTransactionId > maxOpenTransactions
+                ? lastTransactionId - maxOpenTransactions
+                : Modbus.MAX_TRANSACTION_ID
+                        - (maxOpenTransactions - lastTransactionId);
 
         // if there are potentially transactions to remove
 
@@ -733,19 +738,25 @@ public class ModbusPoller extends Thread
         Iterator<Entry<Integer, ModbusRegisterInfo>> pendingTransactionsIterator = this.pendingTransactions
                 .entrySet().iterator();
 
-        // remove ol entries handling the "overflow" of transaction ids.
+        // remove old entries handling the "overflow" of transaction ids.
         while (pendingTransactionsIterator.hasNext())
         {
             Entry<Integer, ModbusRegisterInfo> currentEntry = pendingTransactionsIterator
                     .next();
 
-            if (currentEntry.getKey() < oldestToKeep
-                    && currentEntry.getKey() > lastTransactionId)
+            if ((lastTransactionId > maxOpenTransactions
+                    && currentEntry.getKey() < oldestToKeep)
+                    || (lastTransactionId < maxOpenTransactions
+                            && (currentEntry.getKey() > lastTransactionId
+                                    && currentEntry.getKey() < oldestToKeep)))
             {
                 // log the error
                 this.logger.error("Removing pending transaction with id: "
                         + currentEntry.getKey()
-                        + " that corresponds to a request that is behind the current of more than 16 transactions. Current transaction: "
+                        + " that corresponds to a request that is behind "
+                        + "the current of more than "
+                        + maxOpenTransactions
+                        + " transactions. Current transaction: "
                         + lastTransactionId);
                 pendingTransactionsIterator.remove();
             }
