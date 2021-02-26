@@ -38,14 +38,9 @@ public class ModbusDriverConfiguration
     private int nRetriesWithinTransaction;
     // the delay between subsequent retries within a transaction
     private int delayBetweenRetriesWithinTransactionMillis;
-    // the flag for activating / de activating the transaction check on modbus
-    // tcp
-    private boolean transactionCheckEnabled;
-    // the maximum difference between transaction IDs, only checked if
-    // transactionCheckEnabled is true
-    // if set to 0 then stricti (Modbus-compliant) transaction check will be
-    // performed
-    private int maxTransactionDelta;
+    // the maximum difference between transaction IDs, allowed before removing
+    // requests from the queue of pending tcp requests.
+    private int maxOpenTransations;
     // a flag to trigger disconnection from the modbus slave on transaction id
     // errors
     private boolean disconnectOnTransactionErrors;
@@ -72,8 +67,7 @@ public class ModbusDriverConfiguration
         this.maxBlacklistPollingCycles = ModbusDriverImpl.DEFAULT_BLACKLIST_DURATION;
         this.nRetriesWithinTransaction = ModbusDriverImpl.DEFAULT_RETRIES_WITHIN_TRANSACTION;
         this.delayBetweenRetriesWithinTransactionMillis = ModbusDriverImpl.DEFAULT_RETRY_DELAY_WITHIN_TRANSACTION_MILLIS;
-        this.transactionCheckEnabled = ModbusDriverImpl.DEFAULT_TRANSACTION_CHECK_ENABLED;
-        this.maxTransactionDelta = ModbusDriverImpl.DEFAULT_MAX_TRANSACTION_ID_DELTA;
+        this.maxOpenTransations = ModbusDriverImpl.DEFAULT_MAX_OPEN_TRANSACTIONS;
         this.disconnectOnTransactionErrors = ModbusDriverImpl.DEFAULT_DISCONNECT_ON_TRANSACTION_CHECK_FAILURE;
     }
 
@@ -147,17 +141,6 @@ public class ModbusDriverConfiguration
     }
 
     /**
-     * Provide the flag enabling (or not) the transaction id check for Modbus
-     * TCP connections, only.
-     * 
-     * @return True if transaction ids should be checked, false otherwise.
-     */
-    public boolean isTransactionCheckEnabled()
-    {
-        return transactionCheckEnabled;
-    }
-
-    /**
      * Provide the maximum delta between sent and received transaction IDs that
      * can be considered acceptable. Please notice that in general the only
      * acceptable value is 0, however some devices might exhibit special
@@ -166,9 +149,9 @@ public class ModbusDriverConfiguration
      * 
      * @return The maximum delta between sent and received transaction IDs.
      */
-    public int getMaxTransactionDelta()
+    public int getMaxOpenTransactions()
     {
-        return maxTransactionDelta;
+        return maxOpenTransations;
     }
 
     /**
@@ -231,19 +214,12 @@ public class ModbusDriverConfiguration
                     .parseIntValueOrDefault((String) properties.get(
                             ModbusNetworkConstants.RETRY_DELAY_WITHIN_TRANSACTION),
                             ModbusDriverImpl.DEFAULT_RETRY_DELAY_WITHIN_TRANSACTION_MILLIS);
-            // get the transaction check flag, if true received transaction ids
-            // are checked against sent transaction ids. Otherwise they are
-            // ignored. This setting is only used for modbus tcp connections.
-            this.transactionCheckEnabled = this.parseBooleanValueOrDefault(
-                    (String) properties.get(
-                            ModbusNetworkConstants.ENABLE_TRANSACTION_CHECK),
-                    ModbusDriverImpl.DEFAULT_TRANSACTION_CHECK_ENABLED);
             // get the allowed delta between the request and response
             // transaction IDs
-            this.maxTransactionDelta = this.parseIntValueOrDefault(
+            this.maxOpenTransations = this.parseIntValueOrDefault(
                     (String) properties.get(
-                            ModbusNetworkConstants.MAX_TRANSACTION_ID_DELTA),
-                    ModbusDriverImpl.DEFAULT_MAX_TRANSACTION_ID_DELTA);
+                            ModbusNetworkConstants.MAX_OPEN_TRANSACTIONS),
+                    ModbusDriverImpl.DEFAULT_MAX_OPEN_TRANSACTIONS);
             // get the connection close flag on transaction check failure
             this.disconnectOnTransactionErrors = this
                     .parseBooleanValueOrDefault((String) properties.get(
@@ -295,7 +271,7 @@ public class ModbusDriverConfiguration
         return String.format("=========== Modbus Driver "
                 + "Configuration ===========\n%s\t\t\t: %s"
                 + "\n%s\t\t\t: %s\n%s\t\t\t\t: %s\n%s\t\t\t\t: %s"
-                + "\n%s\t\t: %s\n%s\t: %s\n%s\t\t\t: %s\n%s\t: %s\n%s\t: %s"
+                + "\n%s\t\t: %s\n%s\t: %s\n%s\t\t\t: %s\n%s\t: %s\n"
                 + "\n===============================" + "====================",
                 ModbusNetworkConstants.POLLING_TIME_MILLIS,
                 this.pollingTimeMillis,
@@ -307,10 +283,8 @@ public class ModbusDriverConfiguration
                 this.nRetriesWithinTransaction,
                 ModbusNetworkConstants.RETRY_DELAY_WITHIN_TRANSACTION,
                 this.delayBetweenRetriesWithinTransactionMillis,
-                ModbusNetworkConstants.ENABLE_TRANSACTION_CHECK,
-                this.transactionCheckEnabled,
-                ModbusNetworkConstants.MAX_TRANSACTION_ID_DELTA,
-                this.maxTransactionDelta,
+                ModbusNetworkConstants.MAX_OPEN_TRANSACTIONS,
+                this.maxOpenTransations,
                 ModbusNetworkConstants.DISCONNECT_ON_TRANSACTION_CHECK_FAILURE,
                 this.disconnectOnTransactionErrors);
     }
